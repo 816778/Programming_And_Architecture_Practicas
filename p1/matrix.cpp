@@ -125,7 +125,6 @@ int main(int argc, char* argv[]) {
         cerr << "Uso: " << argv[0] << " <size> <min_value> <max_value>" << endl;
         return 1;
     }
-    cout << "Multiplicación de matrices" << endl;
     // Convertir los argumentos de cadena a enteros
     unsigned int size = atoi(argv[1]);
     int min_value = atoi(argv[2]);

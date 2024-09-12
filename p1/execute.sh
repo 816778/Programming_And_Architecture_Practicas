@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Example command
-# ./run_matrix.sh 1 100 2 200 20
+# ./execute.sh 1 100 2 1000 20
 
 # Salida
 # size, real, user, sys
@@ -21,16 +21,16 @@ incremento=$5
 
 echo "Compilando ficheros..."
 
-g++ matrix.cpp -o matrix
-g++ matrix.cpp -o 2_matrix
-g++ -O2 -Wall -I p1/eigen-3.4.0/ matrix.cpp -o eigen_matrix
-g++ -O2 -Wall -I p1/eigen-3.4.0/ matrix_2.cpp -o matrix_eigen_2
+g++ matrix.cpp -o executable/matrix
+g++ matrix.cpp -o executable/2_matrix
+g++ -O2 -Wall -I p1/eigen-3.4.0/ matrix.cpp -o executable/eigen_matrix
+g++ -O2 -Wall -I p1/eigen-3.4.0/ matrix_2.cpp -o executable/matrix_eigen_2
 
 # Archivo para guardar los tiempos de ejecución
-output_file="time_matrix.txt"
-output_file_2="time_matrix_2.txt"
-output_file_3="time_matrix_eg.txt"
-output_file_4="time_matrix_eg2.txt"
+output_file="results/time_matrix.txt"
+output_file_2="results/time_matrix_2.txt"
+output_file_3="results/time_matrix_eg.txt"
+output_file_4="results/time_matrix_eg2.txt"
 
 # Limpiar el archivo de salida
 > $output_file
@@ -45,10 +45,10 @@ echo "Ejecutando multiplicaciones"
 for (( size=$size_inicial; size<=$size_final; size+=$incremento ))
 do
     # Ejecutar el programa con el tamaño y los valores min_value y max_value, y guardar el tiempo
-    { /usr/bin/time -f "$size %e %U %S" ./matrix $size $min_value $max_value; } 2>> $output_file
-    { /usr/bin/time -f "$size %e %U %S" ./2_matrix $size $min_value $max_value; } 2>> $output_file_2
-    { /usr/bin/time -f "$size %e %U %S" ./eigen_matrix $size $min_value $max_value; } 2>> $output_file_3
-    { /usr/bin/time -f "$size %e %U %S" ./matrix_eigen_2 $size $min_value $max_value; } 2>> $output_file_4
+    { /usr/bin/time -f "$size %e %U %S" ./executable/matrix $size $min_value $max_value; } 2>> $output_file
+    { /usr/bin/time -f "$size %e %U %S" ./executable/2_matrix $size $min_value $max_value; } 2>> $output_file_2
+    { /usr/bin/time -f "$size %e %U %S" ./executable/eigen_matrix $size $min_value $max_value; } 2>> $output_file_3
+    { /usr/bin/time -f "$size %e %U %S" ./executable/matrix_eigen_2 $size $min_value $max_value; } 2>> $output_file_4
 done
 
 echo "Ejecución completa. Tiempos guardados"
