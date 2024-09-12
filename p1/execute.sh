@@ -21,10 +21,10 @@ incremento=$5
 
 echo "Compilando ficheros..."
 
-g++ matrix.cpp -o executable/matrix
-g++ matrix.cpp -o executable/2_matrix
-g++ -O2 -Wall -I p1/eigen-3.4.0/ matrix.cpp -o executable/eigen_matrix
-g++ -O2 -Wall -I p1/eigen-3.4.0/ matrix_2.cpp -o executable/matrix_eigen_2
+g++ src/matrix.cpp -o executable/matrix
+g++ src/matrix.cpp -o executable/2_matrix
+g++ -O2 -Wall -I p1/eigen-3.4.0/ src/matrix.cpp -o executable/eigen_matrix
+g++ -O2 -Wall -I p1/eigen-3.4.0/ src/matrix_2.cpp -o executable/matrix_eigen_2
 
 # Archivo para guardar los tiempos de ejecución
 output_file="results/time_matrix.txt"
