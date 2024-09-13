@@ -19,6 +19,9 @@ size_inicial=$3
 size_final=$4
 incremento=$5
 
+FOLDER_EXE="executable"
+FOLDER_RESULT="results"
+
 echo "Compilando ficheros..."
 
 g++ src/matrix.cpp -o executable/matrix
@@ -27,10 +30,10 @@ g++ -O2 -Wall -I p1/eigen-3.4.0/ src/matrix.cpp -o executable/eigen_matrix
 g++ -O2 -Wall -I p1/eigen-3.4.0/ src/matrix_2.cpp -o executable/matrix_eigen_2
 
 # Archivo para guardar los tiempos de ejecución
-output_file="results/time_matrix.txt"
-output_file_2="results/time_matrix_2.txt"
-output_file_3="results/time_matrix_eg.txt"
-output_file_4="results/time_matrix_eg2.txt"
+output_file="$FOLDER_RESULT/time_matrix.txt"
+output_file_2="$FOLDER_RESULT/time_matrix_2.txt"
+output_file_3="$FOLDER_RESULT/time_matrix_eg.txt"
+output_file_4="$FOLDER_RESULT/time_matrix_eg2.txt"
 
 # Limpiar el archivo de salida
 > $output_file
@@ -45,10 +48,15 @@ echo "Ejecutando multiplicaciones"
 for (( size=$size_inicial; size<=$size_final; size+=$incremento ))
 do
     # Ejecutar el programa con el tamaño y los valores min_value y max_value, y guardar el tiempo
-    { /usr/bin/time -f "$size %e %U %S" ./executable/matrix $size $min_value $max_value; } 2>> $output_file
-    { /usr/bin/time -f "$size %e %U %S" ./executable/2_matrix $size $min_value $max_value; } 2>> $output_file_2
-    { /usr/bin/time -f "$size %e %U %S" ./executable/eigen_matrix $size $min_value $max_value; } 2>> $output_file_3
-    { /usr/bin/time -f "$size %e %U %S" ./executable/matrix_eigen_2 $size $min_value $max_value; } 2>> $output_file_4
+    echo "$size" >> $output_file
+    { time ./$FOLDER_EXE/matrix $size $min_value $max_value; } 2>> $output_file
+    echo "$size" >> $output_file_2
+    { time ./$FOLDER_EXE/2_matrix $size $min_value $max_value; } 2>> $output_file_2
+    echo "$size" >> $output_file_3
+    { time ./$FOLDER_EXE/eigen_matrix $size $min_value $max_value; } 2>> $output_file_3
+    echo "$size" >> $output_file_4
+    { time ./$FOLDER_EXE/matrix_eigen_2 $size $min_value $max_value; } 2>> $output_file_4
+
 done
 
 echo "Ejecución completa. Tiempos guardados"

@@ -9,17 +9,42 @@ def read_times_from_file(filename):
 
     # Abrir el archivo en modo lectura
     with open(filename, 'r') as file:
+        current_size = None  # Almacena el tamaño actual
         for line in file:
-            # Dividir la línea por espacios
-            parts = line.split()
-            if len(parts) == 4:
-                # Agregar los valores a las listas correspondientes
-                size.append(int(parts[0]))
-                real_times.append(float(parts[1]))
-                user_times.append(float(parts[2]))
-                sys_times.append(float(parts[3]))
+            line = line.strip()
+            if line.startswith("# size"):
+                continue  # Saltar el encabezado
+            elif line.startswith("#"):
+                continue  # Saltar comentarios
+            elif line.isdigit():
+                # Leer el tamaño de la matriz
+                current_size = int(line)
+                size.append(current_size)
+            elif line.startswith("real"):
+                # Extraer tiempo real
+                time_str = line.split()[1]
+                real_time = parse_time_string_to_ms(time_str)
+                real_times.append(real_time)
+            elif line.startswith("user"):
+                # Extraer tiempo de usuario
+                time_str = line.split()[1]
+                user_time = parse_time_string_to_ms(time_str)
+                user_times.append(user_time)
+            elif line.startswith("sys"):
+                # Extraer tiempo de sistema
+                time_str = line.split()[1]
+                sys_time = parse_time_string_to_ms(time_str)
+                sys_times.append(sys_time)
 
     return size, real_times, user_times, sys_times
+
+def parse_time_string_to_ms(time_str):
+    """Convierte un string de tiempo (como '0m2,524s') a milisegundos en formato float."""
+    minutes, seconds = time_str.split('m')
+    seconds = seconds.replace('s', '').replace(',', '.')  # Reemplazar coma por punto decimal
+    total_seconds = float(minutes) * 60 + float(seconds)
+    return total_seconds * 1000  # Convertir a milisegundos
+
 
 
 # Función para graficar los tiempos real, user y sys en función del tamaño de la matriz
@@ -46,7 +71,7 @@ def plot_times(size, real_times, user_times, sys_times, title):
     plt.show()
 
 
-file_names = ['time_matrix.txt', 'time_matrix_2.txt', 'time_matrix_eg.txt', 'time_matrix_eg2.txt']
+file_names = ['results/time_matrix.txt', 'results/time_matrix_2.txt', 'results/time_matrix_eg.txt', 'results/time_matrix_eg2.txt']
 
 # Bucle para procesar cada archivo y graficar los resultados
 for file_name in file_names:
