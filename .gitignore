@@ -56,3 +56,6 @@ dkms.conf
 eigen-3.4.0
 p1/eigen-3.4.0
 p1\eigen-3.4.0
+
+execuable/*
+!execuable/ejecutables.txt

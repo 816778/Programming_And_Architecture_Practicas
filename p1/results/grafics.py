@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 
 
-def read_times_from_file(filename):
+def read_times_from_file_2(filename):
     size = []
     real_times = []
     user_times = []
@@ -42,6 +42,48 @@ def parse_time_string_to_ms(time_str):
     seconds = seconds.replace('s', '').replace(',', '.') 
     total_seconds = float(minutes) * 60 + float(seconds)
     return total_seconds * 1000 
+
+
+def read_times_from_file(filename):
+    size = []
+    real_times = []
+    user_times = []
+    sys_times = []
+    stddev_real_times = []
+    stddev_user_times = []
+    stddev_sys_times = []
+
+    with open(filename, 'r') as file:
+        for line in file:
+            line = line.strip()
+
+            # Saltar líneas vacías o encabezados
+            if not line or line.startswith("size"):
+                continue
+
+            # Dividir la línea en partes separadas por espacio
+            parts = line.split()
+
+            # Asegurarse de que la línea tiene el número esperado de elementos
+            if len(parts) == 7:
+                current_size = int(parts[0])
+                mean_real = float(parts[1])
+                mean_user = float(parts[2])
+                mean_sys = float(parts[3])
+                stddev_real = float(parts[4])
+                stddev_user = float(parts[5])
+                stddev_sys = float(parts[6])
+
+                # Añadir los valores a las listas correspondientes
+                size.append(current_size)
+                real_times.append(mean_real)
+                user_times.append(mean_user)
+                sys_times.append(mean_sys)
+                stddev_real_times.append(stddev_real)
+                stddev_user_times.append(stddev_user)
+                stddev_sys_times.append(stddev_sys)
+
+    return size, real_times, user_times, sys_times#, stddev_real_times, stddev_user_times, stddev_sys_times
 
 
 
@@ -86,7 +128,7 @@ def compare_two_files(file1, file2):
     plt.show()
 
 compare_two_files('results/time_matrix_2.txt', 'results/time_matrix_eg.txt')
-file_names = ['results/time_matrix.txt', 'results/time_matrix_2.txt', 'results/time_matrix_eg.txt', 'results/time_matrix_eg2.txt']
+file_names = ['results/time_matrix.txt', 'results/time_matrix_2.txt', 'results/time_matrix_eg.txt']
 
 for file_name in file_names:
     size, real_times, user_times, sys_times = read_times_from_file(file_name)
