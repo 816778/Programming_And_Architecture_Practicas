@@ -26,7 +26,7 @@ echo "Compilando ficheros..."
 
 g++ src/matrix.cpp -o executable/matrix
 g++ src/matrix.cpp -o executable/2_matrix
-g++ -O2 -Wall -I p1/eigen-3.4.0/ src/matrix.cpp -o executable/eigen_matrix
+g++ -O2 -Wall -I p1/eigen-3.4.0/ src/matrix_eigen.cpp -o executable/eigen_matrix
 g++ -O2 -Wall -I p1/eigen-3.4.0/ src/matrix_2.cpp -o executable/matrix_eigen_2
 
 # Archivo para guardar los tiempos de ejecución
