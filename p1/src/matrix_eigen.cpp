@@ -10,7 +10,6 @@ using namespace Eigen;
 MatrixXi generate_random_matrix(unsigned int size, int min_value, int max_value) {
     MatrixXi mat(size, size);
     
-    // Generador de números aleatorios
     random_device rd;
     mt19937 gen(rd());
     uniform_int_distribution<> dis(min_value, max_value);
@@ -24,7 +23,6 @@ MatrixXi generate_random_matrix(unsigned int size, int min_value, int max_value)
 
 // Función para multiplicar matrices
 void multiplicar_matrix(unsigned int size, int min_value, int max_value, bool verbose=false) {
-    // Crear matrices aleatorias usando Eigen
     MatrixXi mat1 = generate_random_matrix(size, min_value, max_value);
     MatrixXi mat2 = generate_random_matrix(size, min_value, max_value);
     MatrixXi result = mat1 * mat2;

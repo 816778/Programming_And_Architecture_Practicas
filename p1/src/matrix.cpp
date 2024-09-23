@@ -4,9 +4,6 @@
 
     g++ matrix.cpp -o matrix_2
     time ./2_matrix
-
-    g++ -O2 -Wall -I p1/eigen-3.4.0/ matrix.cpp -o matrix_eigen
-    time ./eigen_matrix
 */
 
 #include <iostream>
@@ -40,11 +37,11 @@ public:
 
     void fill_random(T min_value = 1, T max_value = 100) {
         random_device rd;  // Seed
-        mt19937 gen(rd()); // Generador Mersenne Twister
-        uniform_int_distribution<T> dis(min_value, max_value); // Distribución uniforme
+        mt19937 gen(rd()); 
+        uniform_int_distribution<T> dis(min_value, max_value); 
 
         for (unsigned int i = 0; i < _n * _n; i++) {
-            m[i] = dis(gen); // Asignar un valor aleatorio
+            m[i] = dis(gen);
         }
     }
 
@@ -91,11 +88,9 @@ void test_matrix(){
     vector<int> values1 = {1, 2, 3, 4};
     vector<int> values2 = {5, 6, 7, 8};
 
-    // Fill matrices with values
     mat1.fill(values1);
     mat2.fill(values2);
 
-    // Perform matrix multiplication
     Matrix<int> result = mat1 * mat2;
 
     // Print the result
@@ -125,7 +120,7 @@ int main(int argc, char* argv[]) {
         cerr << "Uso: " << argv[0] << " <size> <min_value> <max_value>" << endl;
         return 1;
     }
-    // Convertir los argumentos de cadena a enteros
+
     unsigned int size = atoi(argv[1]);
     int min_value = atoi(argv[2]);
     int max_value = atoi(argv[3]);

@@ -74,7 +74,6 @@ def read_times_from_file(filename):
                 stddev_user = float(parts[5])
                 stddev_sys = float(parts[6])
 
-                # Añadir los valores a las listas correspondientes
                 size.append(current_size)
                 real_times.append(mean_real)
                 user_times.append(mean_user)
@@ -91,12 +90,10 @@ def read_times_from_file(filename):
 def plot_times(size, real_times, user_times, sys_times, title):
     plt.figure(figsize=(10, 6))
 
-    # Graficar cada uno de los tiempos con su etiqueta
     plt.plot(size, real_times, label="Real Time", marker='o')
     plt.plot(size, user_times, label="User Time", marker='o')
     plt.plot(size, sys_times, label="Sys Time", marker='o')
 
-    # Título y etiquetas de los ejes
     plt.title(f'Comparación de Tiempos: {title}')
     plt.xlabel('Tamaño de la Matriz (Size)')
     plt.ylabel('Tiempo (Segundos)')
