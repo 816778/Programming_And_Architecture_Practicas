@@ -6,13 +6,13 @@
 using namespace std;
 using namespace Eigen;
 
-// Función para generar matrices aleatorias
-MatrixXi generate_random_matrix(unsigned int size, int min_value, int max_value) {
-    MatrixXi mat(size, size);
+// Función para generar matrices aleatorias 
+MatrixXd generate_random_matrix(unsigned int size, double min_value, double max_value) {
+    MatrixXd mat(size, size);
     
     random_device rd;
     mt19937 gen(rd());
-    uniform_int_distribution<> dis(min_value, max_value);
+    uniform_real_distribution<> dis(min_value, max_value);  
     
     for (int i = 0; i < mat.size(); ++i) {
         mat(i) = dis(gen);
@@ -21,11 +21,11 @@ MatrixXi generate_random_matrix(unsigned int size, int min_value, int max_value)
     return mat;
 }
 
-// Función para multiplicar matrices
-void multiplicar_matrix(unsigned int size, int min_value, int max_value, bool verbose=false) {
-    MatrixXi mat1 = generate_random_matrix(size, min_value, max_value);
-    MatrixXi mat2 = generate_random_matrix(size, min_value, max_value);
-    MatrixXi result = mat1 * mat2;
+// Función para multiplicar matrices 
+void multiplicar_matrix(unsigned int size, double min_value, double max_value, bool verbose=false) {
+    MatrixXd mat1 = generate_random_matrix(size, min_value, max_value);
+    MatrixXd mat2 = generate_random_matrix(size, min_value, max_value);
+    MatrixXd result = mat1 * mat2;
 
     if (verbose){
         cout << "Matrix 1:\n" << mat1 << endl;
@@ -41,8 +41,8 @@ int main(int argc, char* argv[]) {
     }
 
     unsigned int size = atoi(argv[1]);
-    int min_value = atoi(argv[2]);
-    int max_value = atoi(argv[3]);
+    double min_value = atof(argv[2]);  
+    double max_value = atof(argv[3]);  
 
     multiplicar_matrix(size, min_value, max_value);
 

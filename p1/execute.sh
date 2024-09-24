@@ -21,13 +21,12 @@ size_final=$4
 incremento=$5
 
 # Número de ejecuciones por experimento
-n_runs=10  # Cambiar según necesidad
+n_runs=20 
 
 FOLDER_EXE="executable"
 FOLDER_RESULT="results"
 
 echo "Compilando ficheros..."
-
 # Compilar los programas de matrices
 g++ src/matrix.cpp -o $FOLDER_EXE/matrix
 g++ src/matrix.cpp -o $FOLDER_EXE/2_matrix
