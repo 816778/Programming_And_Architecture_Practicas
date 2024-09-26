@@ -2,6 +2,7 @@
 #include "../eigen-3.4.0/Eigen/Dense"  
 #include <random>
 #include <cstdlib>
+#include <sys/time.h> 
 
 using namespace std;
 using namespace Eigen;
@@ -21,13 +22,33 @@ MatrixXd generate_random_matrix(unsigned int size, double min_value, double max_
     return mat;
 }
 
-// Función para multiplicar matrices 
+// Función para medir el tiempo usando gettimeofday()
+double get_time_in_seconds() {
+    struct timeval tv;
+    gettimeofday(&tv, nullptr);
+    return tv.tv_sec + tv.tv_usec / 1000000.0;
+}
+
+// Función para multiplicar matrices con medición de tiempos
 void multiplicar_matrix(unsigned int size, double min_value, double max_value, bool verbose=false) {
+    // Medir el tiempo de declaración, asignación y generación de matrices aleatorias
+    double start_init_time = get_time_in_seconds();
+
     MatrixXd mat1 = generate_random_matrix(size, min_value, max_value);
     MatrixXd mat2 = generate_random_matrix(size, min_value, max_value);
+
+    double end_init_time = get_time_in_seconds();
+    cout << "Tiempo de inicialización (Eigen): " << (end_init_time - start_init_time) << " segundos" << endl;
+
+    // Medir el tiempo de la multiplicación de matrices
+    double start_mult_time = get_time_in_seconds();
+
     MatrixXd result = mat1 * mat2;
 
-    if (verbose){
+    double end_mult_time = get_time_in_seconds();
+    cout << "Tiempo de multiplicación (Eigen): " << (end_mult_time - start_mult_time) << " segundos" << endl;
+
+    if (verbose) {
         cout << "Matrix 1:\n" << mat1 << endl;
         cout << "Matrix 2:\n" << mat2 << endl;
         cout << "Resultado de la multiplicación de matrices:\n" << result << endl;
