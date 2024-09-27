@@ -69,7 +69,7 @@ int main(int argc, char* argv[]) {
     mat2.fill_random(min_value, max_value);
 
     double end_init_time = get_time_in_seconds();
-    cout << "Tiempo de inicialización: " << (end_init_time - start_init_time) << " segundos" << endl;
+    cout << (end_init_time - start_init_time) << "\n";
 
     // Medir el tiempo de la multiplicación de matrices
     double start_mult_time = get_time_in_seconds();
@@ -77,7 +77,7 @@ int main(int argc, char* argv[]) {
     Matrix<double> result = mat1 * mat2;
 
     double end_mult_time = get_time_in_seconds();
-    cout << "Tiempo de multiplicación: " << (end_mult_time - start_mult_time) << " segundos" << endl;
+    cout << (end_mult_time - start_mult_time) << "\n";
 
     return 0;
 }

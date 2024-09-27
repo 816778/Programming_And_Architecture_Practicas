@@ -38,7 +38,7 @@ void multiplicar_matrix(unsigned int size, double min_value, double max_value, b
     MatrixXd mat2 = generate_random_matrix(size, min_value, max_value);
 
     double end_init_time = get_time_in_seconds();
-    cout << "Tiempo de inicialización (Eigen): " << (end_init_time - start_init_time) << " segundos" << endl;
+    cout << (end_init_time - start_init_time) << "\n";
 
     // Medir el tiempo de la multiplicación de matrices
     double start_mult_time = get_time_in_seconds();
@@ -46,7 +46,7 @@ void multiplicar_matrix(unsigned int size, double min_value, double max_value, b
     MatrixXd result = mat1 * mat2;
 
     double end_mult_time = get_time_in_seconds();
-    cout << "Tiempo de multiplicación (Eigen): " << (end_mult_time - start_mult_time) << " segundos" << endl;
+    cout << (end_mult_time - start_mult_time) << "\n";
 
     if (verbose) {
         cout << "Matrix 1:\n" << mat1 << endl;
