@@ -1,0 +1,38 @@
+0.0826271
+0.46992
+0.0749271
+0.453292
+0.0742741
+0.46334
+0.100465
+0.471372
+0.0732241
+0.4764
+0.0781441
+0.479347
+0.07199
+0.462503
+0.0751181
+0.468572
+0.0722661
+0.457357
+0.0751562
+0.460388
+
+ Performance counter stats for './executable/eigen_matrix 1500 1 10000' (10 runs):
+
+            545,97 msec task-clock                       #    0,997 CPUs utilized               ( +-  0,68% )
+                27      context-switches                 #   49,453 /sec                        ( +- 53,19% )
+                 1      cpu-migrations                   #    1,832 /sec                        ( +- 47,14% )
+            15.711      page-faults                      #   28,776 K/sec                       ( +-  0,00% )
+     2.151.254.227      cycles                           #    3,940 GHz                         ( +-  0,41% )
+     6.194.268.590      instructions                     #    2,88  insn per cycle              ( +-  0,01% )
+       100.932.570      branches                         #  184,867 M/sec                       ( +-  0,10% )
+         4.628.960      branch-misses                    #    4,59% of all branches             ( +-  0,04% )
+                        TopdownL1                 #     23,4 %  tma_backend_bound      
+                                                  #      7,5 %  tma_bad_speculation    
+                                                  #      4,8 %  tma_frontend_bound     
+                                                  #     64,3 %  tma_retiring             ( +-  0,25% )
+
+           0,54752 +- 0,00408 seconds time elapsed  ( +-  0,75% )
+

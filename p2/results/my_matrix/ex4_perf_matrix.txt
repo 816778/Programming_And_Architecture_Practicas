@@ -1,0 +1,38 @@
+0.197573
+19.8173
+0.192649
+19.7499
+0.197606
+20.7316
+0.199026
+21.343
+0.225519
+22.0698
+0.196881
+21.8544
+0.19842
+21.3995
+0.192781
+19.6962
+0.192538
+19.716
+0.193791
+21.4056
+
+ Performance counter stats for './executable/matrix 1500 1 10000' (10 runs):
+
+         20.946,96 msec task-clock                       #    0,998 CPUs utilized               ( +-  1,46% )
+               830      context-switches                 #   39,624 /sec                        ( +- 19,95% )
+                22      cpu-migrations                   #    1,050 /sec                        ( +- 18,11% )
+            13.331      page-faults                      #  636,417 /sec                        ( +-  0,08% )
+    85.601.614.421      cycles                           #    4,087 GHz                         ( +-  1,00% )
+   187.518.885.545      instructions                     #    2,19  insn per cycle              ( +-  0,00% )
+     3.605.133.376      branches                         #  172,108 M/sec                       ( +-  0,02% )
+         7.024.562      branch-misses                    #    0,19% of all branches             ( +-  0,30% )
+                        TopdownL1                 #     46,5 %  tma_backend_bound      
+                                                  #     16,8 %  tma_bad_speculation    
+                                                  #      0,1 %  tma_frontend_bound     
+                                                  #     36,6 %  tma_retiring             ( +-  0,49% )
+
+            20,982 +- 0,304 seconds time elapsed  ( +-  1,45% )
+
