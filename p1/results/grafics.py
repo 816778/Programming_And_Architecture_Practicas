@@ -124,7 +124,8 @@ def compare_two_files(file1, file2):
     plt.grid(True)
     plt.show()
 
-compare_two_files('results/time_matrix_2.txt', 'results/time_matrix_eg.txt')
+compare_two_files('results/time_matrix_2.txt', 'results/time_matrix.txt')
+exit()
 file_names = ['results/time_matrix.txt', 'results/time_matrix_2.txt', 'results/time_matrix_eg.txt']
 
 for file_name in file_names:

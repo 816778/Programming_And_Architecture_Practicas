@@ -29,7 +29,7 @@ FOLDER_RESULT="results"
 echo "Compilando ficheros..."
 # Compilar los programas de matrices
 g++ src/matrix.cpp -o $FOLDER_EXE/matrix
-g++ src/matrix.cpp -o $FOLDER_EXE/2_matrix
+g++ src/matrix_2.cpp -o $FOLDER_EXE/2_matrix
 g++ -O2 -Wall -I p1/eigen-3.4.0/ src/matrix_eigen.cpp -o $FOLDER_EXE/eigen_matrix
 
 # Archivos para guardar los tiempos de ejecución

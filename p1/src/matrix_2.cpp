@@ -1,39 +1,32 @@
 #include <iostream>
 #include <vector>
 #include <random>
+#include <cstdlib>
+#include <thread>
+#include <future>
+#include <cmath>
+
 using namespace std;
 
+// matriz con arreglo bidimensional
 template <typename T>
-class Matrix {
+class Matrix2D {
     unsigned int _n;
     T** m;
 
 public:
-    Matrix(unsigned int n) : _n(n) {
+    Matrix2D(unsigned int n) : _n(n) {
         m = new T*[n];
         for (unsigned int i = 0; i < n; i++) {
             m[i] = new T[n];
         }
     }
 
-
-    ~Matrix() {
+    ~Matrix2D() {
         for (unsigned int i = 0; i < _n; i++) {
             delete[] m[i];
         }
         delete[] m;
-    }
-
-    void fill(const vector<T>& v) {
-        if (_n * _n != v.size()) {
-            throw runtime_error("Vector and matrix size mismatch. Vector has size " + to_string(v.size()) + " and matrix has size " + to_string(_n * _n) + ".");
-        }
-        unsigned int k = 0;
-        for (unsigned int i = 0; i < _n; i++) {
-            for (unsigned int j = 0; j < _n; j++) {
-                m[i][j] = v[k++];
-            }
-        }
     }
 
     void fill_random(T min_value = 1.0, T max_value = 100.0) {
@@ -48,12 +41,12 @@ public:
         }
     }
 
-    friend Matrix operator*(const Matrix& a, const Matrix& b) {
+    friend Matrix2D operator*(const Matrix2D& a, const Matrix2D& b) {
         if (a._n != b._n) {
-            throw runtime_error("Matrix size mismatch. Both matrices must have the same size.");
+            throw runtime_error("Matrix size mismatch.");
         }
 
-        Matrix<T> c(a._n);
+        Matrix2D c(a._n);
         for (unsigned int i = 0; i < a._n; i++) {
             for (unsigned int j = 0; j < a._n; j++) {
                 c.m[i][j] = 0;
@@ -75,51 +68,96 @@ public:
     }
 };
 
-// Función de prueba para multiplicar matrices de tipo double
-void test_matrix() {
-    unsigned int size = 2;
-    Matrix<double> mat1(size);
-    Matrix<double> mat2(size);
+// matriz con arreglo unidimensional
+template <typename T>
+class Matrix1D {
+    unsigned int _n;
+    T* m;
 
-    vector<double> values1 = {1.1, 2.0, 3.0, 4.0};
-    vector<double> values2 = {5.0, 6.0, 7.0, 8.0};
+public:
+    Matrix1D(unsigned int n) : _n(n), m(new T[n * n]) {}
 
-    mat1.fill(values1);
-    mat2.fill(values2);
+    ~Matrix1D() {
+        delete[] m;
+    }
 
-    Matrix<double> result = mat1 * mat2;
+    void fill_random(T min_value = 1.0, T max_value = 100.0) {
+        random_device rd;
+        mt19937 gen(rd());
+        uniform_real_distribution<T> dis(min_value, max_value);
 
-    cout << "Matrix 1:" << endl;
-    mat1.print();
-    cout << "Matrix 2:" << endl;
-    mat2.print();
-    cout << "Resultado de la multiplicación de matrices:" << endl;
-    result.print();
-}
+        for (unsigned int i = 0; i < _n * _n; i++) {
+            m[i] = dis(gen);
+        }
+    }
+
+    friend Matrix1D operator*(const Matrix1D& a, const Matrix1D& b) {
+        if (a._n != b._n) {
+            throw runtime_error("Matrix size mismatch.");
+        }
+
+        Matrix1D c(a._n);
+        vector<future<void>> futures;
+
+        for (unsigned int i = 0; i < a._n; i++) {
+            futures.emplace_back(async(launch::async, [&, i] {
+                for (unsigned int j = 0; j < a._n; j++) {
+                    c.m[i * c._n + j] = 0;
+                    for (unsigned int k = 0; k < a._n; k++) {
+                        c.m[i * c._n + j] += a.m[i * a._n + k] * b.m[k * b._n + j];
+                    }
+                }
+            }));
+        }
+
+        for (auto& f : futures) {
+            f.get(); // Esperar a que todos los hilos terminen
+        }
+
+        return c;
+    }
+
+    void print() const {
+        for (unsigned int i = 0; i < _n * _n; i++) {
+            cout << m[i] << " ";
+            if (i % _n == _n - 1) cout << endl;
+        }
+    }
+};
 
 // Función para multiplicar matrices aleatorias de tipo double
-void multiplicar_matrix(unsigned int size, double min_value, double max_value) {
-    Matrix<double> mat1(size);
-    Matrix<double> mat2(size);
-
-    mat1.fill_random(min_value, max_value);
-    mat2.fill_random(min_value, max_value);
-
-    Matrix<double> result = mat1 * mat2;
-    // result.print();
+void multiplicar_matrix(unsigned int size, double min_value, double max_value, int tipo) {
+    if (tipo == 1) { // Matrices 2D
+        Matrix2D<double> mat1(size);
+        Matrix2D<double> mat2(size);
+        mat1.fill_random(min_value, max_value);
+        mat2.fill_random(min_value, max_value);
+        Matrix2D<double> result = mat1 * mat2;
+        result.print();
+    } else if (tipo == 2) { // Matrices 1D
+        Matrix1D<double> mat1(size);
+        Matrix1D<double> mat2(size);
+        mat1.fill_random(min_value, max_value);
+        mat2.fill_random(min_value, max_value);
+        Matrix1D<double> result = mat1 * mat2;
+        result.print();
+    } else {
+        cerr << "Tipo de matriz no válido." << endl;
+    }
 }
 
 int main(int argc, char* argv[]) {
-    if (argc != 4) {
-        cerr << "Uso: " << argv[0] << " <size> <min_value> <max_value>" << endl;
+    if (argc != 5) {
+        cerr << "Uso: " << argv[0] << " <size> <min_value> <max_value> <tipo>" << endl;
         return 1;
     }
 
     unsigned int size = atoi(argv[1]);
     double min_value = atof(argv[2]);  
-    double max_value = atof(argv[3]); 
+    double max_value = atof(argv[3]);
+    int tipo = atoi(argv[4]); // 1 para 2D, 2 para 1D
 
-    multiplicar_matrix(size, min_value, max_value);
+    multiplicar_matrix(size, min_value, max_value, tipo);
 
     return 0;
 }
