@@ -171,15 +171,52 @@ def write_results_to_file(file_path, avg_time_init_matrix, avg_time_multiplicati
         file.write(f"{'100.00':>15} {total_seconds:>15.5f} {int(total_calls):>20} {int(total_errors):>15} {'total':<15}\n")
 
 
+def detect_high_deviation(avg_time_init_matrix, avg_time_multiplication_matrix, avg_syscall_stats, threshold=1.5):
+    high_deviation_metrics = []
+
+    # Verificar desviación estándar alta en los tiempos de inicialización y multiplicación de matrices
+    time_init_avg, time_init_std = avg_time_init_matrix
+    if time_init_std / time_init_avg > threshold:
+        high_deviation_metrics.append(
+            f"Tiempo de inicialización de matriz: Media = {time_init_avg:.5f}, Desviación Estándar = {time_init_std:.5f}"
+        )
+
+    time_mult_avg, time_mult_std = avg_time_multiplication_matrix
+    if time_mult_std / time_mult_avg > threshold:
+        high_deviation_metrics.append(
+            f"Tiempo de multiplicación de matriz: Media = {time_mult_avg:.5f}, Desviación Estándar = {time_mult_std:.5f}"
+        )
+
+    # Verificar desviación estándar alta en las llamadas al sistema
+    for syscall_name, stats in avg_syscall_stats.items():
+        for stat_name, (mean, stddev) in stats.items():
+            if stddev / mean > threshold:
+                high_deviation_metrics.append(
+                    f"{stat_name}: {syscall_name}: Media = {mean:.5f}, Desviación Estándar = {stddev:.5f}"
+                )
+
+    return high_deviation_metrics
+
+
 
 
 FOLDER_PATH = 'results/'
 FOLDER_PATH_MY_MATRIX = FOLDER_PATH + 'my_matrix/'
 FOLDER_PATH_EIGEN = FOLDER_PATH + 'eigen/'
+WRITE_ON_FILE = False
 
 files_path = [ FOLDER_PATH_MY_MATRIX + 'ex3_strace_matrix.txt' , FOLDER_PATH_EIGEN + 'ex3_strace_eigen.txt' ]
 
 for file_path in files_path:
+    print(f"####################################################\n{file_path}\n####################################################\n")
     results = parse_multiple_results(file_path)
     avg_time_init_matrix, avg_time_multiplication_matrix, avg_syscall_stats = calculate_average_results(results)
-    write_results_to_file(file_path, avg_time_init_matrix, avg_time_multiplication_matrix, avg_syscall_stats)
+    if WRITE_ON_FILE:
+        write_results_to_file(file_path, avg_time_init_matrix, avg_time_multiplication_matrix, avg_syscall_stats)
+    high_deviation_metrics = detect_high_deviation(avg_time_init_matrix, avg_time_multiplication_matrix, avg_syscall_stats)
+    if high_deviation_metrics:
+        print("Las siguientes métricas tienen una desviación estándar alta:")
+        for metric in high_deviation_metrics:
+            print(metric)
+    else:
+        print("No se ha detectado desviación estándar alta en ninguna métrica.")
