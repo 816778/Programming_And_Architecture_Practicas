@@ -1,4 +1,6 @@
 import numpy as np
+import matplotlib.pyplot as plt
+
 
 def parse_multiple_results(file_path):
     with open(file_path, 'r') as file:
@@ -171,52 +173,93 @@ def write_results_to_file(file_path, avg_time_init_matrix, avg_time_multiplicati
         file.write(f"{'100.00':>15} {total_seconds:>15.5f} {int(total_calls):>20} {int(total_errors):>15} {'total':<15}\n")
 
 
-def detect_high_deviation(avg_time_init_matrix, avg_time_multiplication_matrix, avg_syscall_stats, threshold=1.5):
-    high_deviation_metrics = []
+def detect_high_deviation(avg_time_init_matrix, avg_time_multiplication_matrix, avg_syscall_stats, threshold=1):
+    # Inicializar los vectores de resultados
+    names = []       # Para almacenar "ini_matrix", "mult_matrix" o el nombre de la syscall
+    measures = []    # Para almacenar "time" o el nombre de la medida (stat_name)
+    means = []       # Para almacenar la media
+    stddevs = []     # Para almacenar la desviación estándar
 
-    # Verificar desviación estándar alta en los tiempos de inicialización y multiplicación de matrices
+    # Verificar desviación estándar alta en los tiempos de inicialización de matriz
     time_init_avg, time_init_std = avg_time_init_matrix
     if time_init_std / time_init_avg > threshold:
-        high_deviation_metrics.append(
-            f"Tiempo de inicialización de matriz: Media = {time_init_avg:.5f}, Desviación Estándar = {time_init_std:.5f}"
-        )
+        names.append("ini_matrix")
+        measures.append("time")
+        means.append(time_init_avg)
+        stddevs.append(time_init_std)
 
+    # Verificar desviación estándar alta en los tiempos de multiplicación de matriz
     time_mult_avg, time_mult_std = avg_time_multiplication_matrix
     if time_mult_std / time_mult_avg > threshold:
-        high_deviation_metrics.append(
-            f"Tiempo de multiplicación de matriz: Media = {time_mult_avg:.5f}, Desviación Estándar = {time_mult_std:.5f}"
-        )
+        names.append("mult_matrix")
+        measures.append("time")
+        means.append(time_mult_avg)
+        stddevs.append(time_mult_std)
 
     # Verificar desviación estándar alta en las llamadas al sistema
     for syscall_name, stats in avg_syscall_stats.items():
         for stat_name, (mean, stddev) in stats.items():
-            if stddev / mean > threshold:
-                high_deviation_metrics.append(
-                    f"{stat_name}: {syscall_name}: Media = {mean:.5f}, Desviación Estándar = {stddev:.5f}"
-                )
+            if mean > 1 and stddev / mean > threshold:
+                names.append(syscall_name)
+                measures.append(stat_name)
+                means.append(mean)
+                stddevs.append(stddev)
 
-    return high_deviation_metrics
+    return names, measures, means, stddevs
 
 
 
 
-FOLDER_PATH = 'results/'
-FOLDER_PATH_MY_MATRIX = FOLDER_PATH + 'my_matrix/'
-FOLDER_PATH_EIGEN = FOLDER_PATH + 'eigen/'
-WRITE_ON_FILE = False
+def plot_means_and_stddevs(names, measures, means, stddevs):
+    # Crear etiquetas combinando nombres y medidas (ini_matrix, mult_matrix, syscall_name)
+    labels = [f"{name} ({measure})" for name, measure in zip(names, measures)]
 
-files_path = [ FOLDER_PATH_MY_MATRIX + 'ex3_strace_matrix.txt' , FOLDER_PATH_EIGEN + 'ex3_strace_eigen.txt' ]
+    # Convertir los datos a arrays de numpy para manipulación más fácil
+    means = np.array(means)
+    stddevs = np.array(stddevs)
 
-for file_path in files_path:
-    print(f"####################################################\n{file_path}\n####################################################\n")
-    results = parse_multiple_results(file_path)
-    avg_time_init_matrix, avg_time_multiplication_matrix, avg_syscall_stats = calculate_average_results(results)
-    if WRITE_ON_FILE:
-        write_results_to_file(file_path, avg_time_init_matrix, avg_time_multiplication_matrix, avg_syscall_stats)
-    high_deviation_metrics = detect_high_deviation(avg_time_init_matrix, avg_time_multiplication_matrix, avg_syscall_stats)
-    if high_deviation_metrics:
-        print("Las siguientes métricas tienen una desviación estándar alta:")
-        for metric in high_deviation_metrics:
-            print(metric)
-    else:
-        print("No se ha detectado desviación estándar alta en ninguna métrica.")
+    # Crear posiciones en el eje X
+    x = np.arange(len(labels))
+
+    # Crear la figura y el gráfico
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    # Crear barras con la media, y agregar barras de error (stddev)
+    ax.bar(x, means, yerr=stddevs, capsize=5, color='lightblue', label='Media', align='center')
+
+    # Añadir etiquetas y título
+    ax.set_xlabel('Métrica')
+    ax.set_ylabel('Valor (Media y Desviación Estándar)')
+    ax.set_title('Medias y Desviaciones Estándar de las Métricas')
+
+    # Rotar etiquetas del eje X para mejor legibilidad
+    ax.set_xticks(x)
+    ax.set_xticklabels(labels, rotation=45, ha="right")
+
+    # Añadir una leyenda
+    ax.legend()
+
+    # Mostrar el gráfico
+    plt.tight_layout()
+    plt.show()
+
+
+if __name__ == "__main__":
+    FOLDER_PATH = 'results/'
+    FOLDER_PATH_MY_MATRIX = FOLDER_PATH + 'my_matrix/'
+    FOLDER_PATH_EIGEN = FOLDER_PATH + 'eigen/'
+    WRITE_ON_FILE = False
+
+    files_path = [ FOLDER_PATH_MY_MATRIX + 'ex3_strace_matrix.txt' , FOLDER_PATH_EIGEN + 'ex3_strace_eigen.txt' ]
+
+    for file_path in files_path:
+        # print(f"####################################################\n{file_path}\n####################################################\n")
+        results = parse_multiple_results(file_path)
+        avg_time_init_matrix, avg_time_multiplication_matrix, avg_syscall_stats = calculate_average_results(results)
+        if WRITE_ON_FILE:
+            write_results_to_file(file_path, avg_time_init_matrix, avg_time_multiplication_matrix, avg_syscall_stats)
+        names, measures, means, stddevs = detect_high_deviation(avg_time_init_matrix, avg_time_multiplication_matrix, avg_syscall_stats)
+        if names:
+            plot_means_and_stddevs(names, measures, means, stddevs)
+        else:
+            print("No se ha detectado desviación estándar alta en ninguna métrica.")

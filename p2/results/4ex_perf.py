@@ -1,133 +1,116 @@
-import re
+import numpy as np
+import matplotlib.pyplot as plt
 
-def parse_perf_output(file_path, num_repeticiones):
-    # Inicializar listas para almacenar los tiempos de inicialización y multiplicación de matrices
-    time_init_matrix = []
-    time_multiplication_matrix = []
 
-    # Inicializar un diccionario para almacenar las estadísticas de rendimiento y desviaciones estándar
-    perf_stats = {
-        'task_clock': {'values': [], 'stddev': []},
-        'context_switches': {'values': [], 'stddev': []},
-        'cpu_migrations': {'values': [], 'stddev': []},
-        'page_faults': {'values': [], 'stddev': []},
-        'cycles': {'values': [], 'stddev': []},
-        'instructions': {'values': [], 'stddev': []},
-        'branches': {'values': [], 'stddev': []},
-        'branch_misses': {'values': [], 'stddev': []},
-        'tma_backend_bound': {'values': [], 'stddev': []},
-        'tma_bad_speculation': {'values': [], 'stddev': []},
-        'tma_frontend_bound': {'values': [], 'stddev': []},
-        'tma_retiring': {'values': [], 'stddev': []},
-        'elapsed_time': {'values': [], 'stddev': []}
-    }
+my_matrix = {
+    "cycles": 85601614421,
+    "context-switches": 830,
+    "cpu_migrations": 22,
+    "page_faults": 13331,
+    "instructions": 187518885545,
+    "branches": 3605133376,
+    "branch_misses": 7024562,
+}
 
-    with open(file_path, 'r') as file:
-        lines = file.readlines()
+eigen_matrix = {
+    "cycles": 2151254227,
+    "context-switches": 27,
+    "cpu_migrations": 1,
+    "page_faults": 15711,
+    "instructions": 6194268590,
+    "branches": 100932570,
+    "branch_misses": 4628960,
+}
 
-        # Regex para extraer las métricas de rendimiento y desviaciones estándar
-        metric_with_stddev_regex = r'(\d+[\d.,]*)\s+.*\s+\( +- (\d+,\d+)% \)'  # Captura valor y desviación estándar en formato %
+def plot_comparative_bars(my_matrix, eigen_matrix):
+    # Listas para almacenar las métricas donde hay más de 50% de diferencia
+    metrics = []
+    my_values = []
+    eigen_values = []
+    differences = []  # Para almacenar los porcentajes de diferencia
 
-        task_clock_regex = r'(\d+,\d+)\s+msec task-clock'
-        context_switches_regex = r'(\d+)\s+context-switches'
-        cpu_migrations_regex = r'(\d+)\s+cpu-migrations'
-        page_faults_regex = r'(\d+)\s+page-faults'
-        cycles_regex = r'(\d[\d,.]*)\s+cycles'
-        instructions_regex = r'(\d[\d,.]*)\s+instructions'
-        branches_regex = r'(\d[\d,.]*)\s+branches'
-        branch_misses_regex = r'(\d[\d,.]*)\s+branch-misses'
-        elapsed_time_regex = r'(\d+,\d+)\s+seconds time elapsed'
-
-        # TMA metrics regex (topdown metrics)
-        tma_regex = r'(\d+,\d+)\s+%\s+tma_(\w+)'
-
-        # Variables para controlar si estamos en la parte de los tiempos o en las métricas
-        is_perf_section = False
-
-        for line in lines:
-            line = line.strip()
-
-            # Leer los tiempos de inicialización y multiplicación de matrices
-            try:
-                if not is_perf_section:
-                    time_value = float(line.replace(",", "."))
-                    if len(time_init_matrix) < num_repeticiones:
-                        time_init_matrix.append(time_value)
-                    else:
-                        time_multiplication_matrix.append(time_value)
-                    continue
-            except ValueError:
-                pass  # Si no es un número, seguimos adelante
-
-            # Cuando llegamos a la parte de las estadísticas de rendimiento (perf output)
-            if 'Performance counter stats' in line:
-                is_perf_section = True
+    # Recorrer las métricas y comparar
+    for key in my_matrix:
+        if key in eigen_matrix:  # Asegurarse de que la métrica exista en ambos diccionarios
+            my_value = my_matrix[key]
+            eigen_value = eigen_matrix[key]
+            
+            # Evitar divisiones por cero
+            if my_value == 0 or eigen_value == 0:
                 continue
+            
+            # Calcular el porcentaje de diferencia relativa
+            diff_percentage = abs(my_value - eigen_value) / min(my_value, eigen_value)
+            print(diff_percentage)
+            if diff_percentage > 0.9:  # Si la diferencia es mayor del 50%
+                metrics.append(key)
+                my_values.append(my_value)
+                eigen_values.append(eigen_value)
+                differences.append(diff_percentage * 100)  # En porcentaje
 
-            if is_perf_section:
-                # Extraer métricas con regex
-                if match := re.search(task_clock_regex, line):
-                    perf_stats['task_clock']['values'].append(float(match.group(1).replace(",", ".")))
-                    if stddev_match := re.search(r'\( +- (\d+,\d+)% \)', line):
-                        perf_stats['task_clock']['stddev'].append(float(stddev_match.group(1).replace(",", ".")))
-                elif match := re.search(context_switches_regex, line):
-                    perf_stats['context_switches']['values'].append(int(match.group(1).replace(",", ".")))
-                    if stddev_match := re.search(r'\( +- (\d+,\d+)% \)', line):
-                        perf_stats['context_switches']['stddev'].append(float(stddev_match.group(1).replace(",", ".")))
-                elif match := re.search(cpu_migrations_regex, line):
-                    perf_stats['cpu_migrations']['values'].append(int(match.group(1).replace(",", ".")))
-                    if stddev_match := re.search(r'\( +- (\d+,\d+)% \)', line):
-                        perf_stats['cpu_migrations']['stddev'].append(float(stddev_match.group(1).replace(",", ".")))
-                elif match := re.search(page_faults_regex, line):
-                    perf_stats['page_faults']['values'].append(int(match.group(1).replace(",", ".")))
-                    if stddev_match := re.search(r'\( +- (\d+,\d+)% \)', line):
-                        perf_stats['page_faults']['stddev'].append(float(stddev_match.group(1).replace(",", ".")))
-                elif match := re.search(cycles_regex, line):
-                    perf_stats['cycles']['values'].append(float(match.group(1).replace(".", "").replace(",", ".")))
-                    if stddev_match := re.search(r'\( +- (\d+,\d+)% \)', line):
-                        perf_stats['cycles']['stddev'].append(float(stddev_match.group(1).replace(",", ".")))
-                elif match := re.search(instructions_regex, line):
-                    perf_stats['instructions']['values'].append(float(match.group(1).replace(".", "").replace(",", ".")))
-                    if stddev_match := re.search(r'\( +- (\d+,\d+)% \)', line):
-                        perf_stats['instructions']['stddev'].append(float(stddev_match.group(1).replace(",", ".")))
-                elif match := re.search(branches_regex, line):
-                    perf_stats['branches']['values'].append(float(match.group(1).replace(".", "").replace(",", ".")))
-                    if stddev_match := re.search(r'\( +- (\d+,\d+)% \)', line):
-                        perf_stats['branches']['stddev'].append(float(stddev_match.group(1).replace(",", ".")))
-                elif match := re.search(branch_misses_regex, line):
-                    perf_stats['branch_misses']['values'].append(float(match.group(1).replace(".", "").replace(",", ".")))
-                    if stddev_match := re.search(r'\( +- (\d+,\d+)% \)', line):
-                        perf_stats['branch_misses']['stddev'].append(float(stddev_match.group(1).replace(",", ".")))
-                elif match := re.search(elapsed_time_regex, line):
-                    perf_stats['elapsed_time']['values'].append(float(match.group(1).replace(",", ".")))
-                    if stddev_match := re.search(r'\( +- (\d+,\d+)% \)', line):
-                        perf_stats['elapsed_time']['stddev'].append(float(stddev_match.group(1).replace(",", ".")))
-                elif match := re.search(tma_regex, line):
-                    metric_type = match.group(2)  # backend_bound, bad_speculation, etc.
-                    value = float(match.group(1).replace(",", "."))
-                    if metric_type == 'backend_bound':
-                        perf_stats['tma_backend_bound']['values'].append(value)
-                    elif metric_type == 'bad_speculation':
-                        perf_stats['tma_bad_speculation']['values'].append(value)
-                    elif metric_type == 'frontend_bound':
-                        perf_stats['tma_frontend_bound']['values'].append(value)
-                    elif metric_type == 'retiring':
-                        perf_stats['tma_retiring']['values'].append(value)
+    # Si no hay diferencias significativas, retornar sin hacer nada
+    if not metrics:
+        print("No hay métricas con más del 90% de diferencia.")
+        return
+    
+    # Crear gráfico de barras
+    x = np.arange(len(metrics))  # Etiquetas en el eje X
+    width = 0.35  # Ancho de las barras
 
-    return time_init_matrix, time_multiplication_matrix, perf_stats
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    # Crear barras
+    bars_my = ax.bar(x - width/2, my_values, width, label='my_matrix', color='b')
+    bars_eigen = ax.bar(x + width/2, eigen_values, width, label='eigen_matrix', color='g')
+
+    # Añadir etiquetas y título
+    ax.set_xlabel('Metrics')
+    ax.set_ylabel('Values')
+    ax.set_title('Comparation my matrix and eigen_matrix (difference > 90%)')
+    ax.set_xticks(x)
+    ax.set_xticklabels(metrics, rotation=45, ha="right")
+
+    # Añadir leyenda
+    ax.legend()
+    # Mostrar el gráfico
+    plt.tight_layout()
+    plt.show()
 
 
+def normalize_matrices(my_matrix, eigen_matrix):
+    # Diccionarios normalizados
+    my_matrix_normalized = {}
+    eigen_matrix_normalized = {}
 
-FOLDER_PATH = 'results/'
-FOLDER_PATH_MY_MATRIX = FOLDER_PATH + 'my_matrix/'
-FOLDER_PATH_EIGEN = FOLDER_PATH + 'eigen/'
+    # Combinar las métricas de ambos diccionarios
+    combined_keys = set(my_matrix.keys()).union(set(eigen_matrix.keys()))
 
-file_path = FOLDER_PATH_MY_MATRIX +  "ex4_perf_matrix.txt"
-num_repeticiones = 10  # Número de repeticiones
+    # Normalizar cada métrica
+    for key in combined_keys:
+        # Obtener valores de my_matrix y eigen_matrix, si no existen, usar 0
+        my_value = my_matrix.get(key, 0)
+        eigen_value = eigen_matrix.get(key, 0)
 
-time_init_matrix, time_multiplication_matrix, perf_stats = parse_perf_output(file_path, num_repeticiones)
+        # Encontrar el mínimo y máximo para normalización
+        min_value = min(my_value, eigen_value)
+        max_value = max(my_value, eigen_value)
+        # Si min_value == max_value, significa que ambos valores son iguales, normalizamos a 1
+        if max_value == min_value:
+            my_matrix_normalized[key] = 1
+            eigen_matrix_normalized[key] = 1
+        else:
+            if max_value == my_value:
+                my_matrix_normalized[key] = 1
+                eigen_matrix_normalized[key] = eigen_value / my_value
+            else:
+                eigen_matrix_normalized[key] = 1
+                my_matrix_normalized[key] = my_value / eigen_value
+    return my_matrix_normalized, eigen_matrix_normalized
 
-# Imprimir los resultados
-print("Tiempos de inicialización de matriz:", time_init_matrix)
-print("Tiempos de multiplicación de matriz:", time_multiplication_matrix)
-print("Estadísticas de rendimiento (perf):", perf_stats)
+
+
+if __name__ == "__main__":
+    my_matrix, eigen_matrix = normalize_matrices(my_matrix, eigen_matrix)
+    print(my_matrix)
+    print(eigen_matrix)
+    plot_comparative_bars(my_matrix, eigen_matrix)
