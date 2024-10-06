@@ -3,12 +3,19 @@
 #include <random>
 using namespace std;
 
+/*
+    g++ src/matrix.cpp -o executable/matrix
+    time ./executable/matrix
+*/
+
 template <typename T>
 class Matrix {
     unsigned int _n;
     T** m;
 
 public:
+
+    // Matrix constructor with size n.
     Matrix(unsigned int n) : _n(n) {
         m = new T*[n];
         for (unsigned int i = 0; i < n; i++) {
@@ -16,7 +23,7 @@ public:
         }
     }
 
-
+    // Matrix destructor.
     ~Matrix() {
         for (unsigned int i = 0; i < _n; i++) {
             delete[] m[i];
@@ -24,6 +31,7 @@ public:
         delete[] m;
     }
 
+    // Fill the matrix with the values of a vector.
     void fill(const vector<T>& v) {
         if (_n * _n != v.size()) {
             throw runtime_error("Vector and matrix size mismatch. Vector has size " + to_string(v.size()) + " and matrix has size " + to_string(_n * _n) + ".");
@@ -36,6 +44,7 @@ public:
         }
     }
 
+    // Fill the matrix with random values between min_value and max_value.
     void fill_random(T min_value = 1.0, T max_value = 100.0) {
         random_device rd; 
         mt19937 gen(rd());
@@ -48,6 +57,7 @@ public:
         }
     }
 
+    // Matrix multiplication operator overloading.
     friend Matrix operator*(const Matrix& a, const Matrix& b) {
         if (a._n != b._n) {
             throw runtime_error("Matrix size mismatch. Both matrices must have the same size.");
@@ -65,6 +75,7 @@ public:
         return c;
     }
 
+    // Matrix print function.
     void print() const {
         for (unsigned int i = 0; i < _n; i++) {
             for (unsigned int j = 0; j < _n; j++) {
@@ -75,29 +86,8 @@ public:
     }
 };
 
-// Función de prueba para multiplicar matrices de tipo double
-void test_matrix() {
-    unsigned int size = 2;
-    Matrix<double> mat1(size);
-    Matrix<double> mat2(size);
 
-    vector<double> values1 = {1.1, 2.0, 3.0, 4.0};
-    vector<double> values2 = {5.0, 6.0, 7.0, 8.0};
-
-    mat1.fill(values1);
-    mat2.fill(values2);
-
-    Matrix<double> result = mat1 * mat2;
-
-    cout << "Matrix 1:" << endl;
-    mat1.print();
-    cout << "Matrix 2:" << endl;
-    mat2.print();
-    cout << "Resultado de la multiplicación de matrices:" << endl;
-    result.print();
-}
-
-// Función para multiplicar matrices aleatorias de tipo double
+// Multiply two double-type and randomly filled matrices.
 void multiplicar_matrix(unsigned int size, double min_value, double max_value) {
     Matrix<double> mat1(size);
     Matrix<double> mat2(size);
@@ -106,7 +96,6 @@ void multiplicar_matrix(unsigned int size, double min_value, double max_value) {
     mat2.fill_random(min_value, max_value);
 
     Matrix<double> result = mat1 * mat2;
-    // result.print();
 }
 
 int main(int argc, char* argv[]) {

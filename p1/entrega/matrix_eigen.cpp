@@ -6,7 +6,7 @@
 using namespace std;
 using namespace Eigen;
 
-// Función para generar matrices aleatorias 
+// Generate sizeXsize random matrices with double values between min_value and max_value.
 MatrixXd generate_random_matrix(unsigned int size, double min_value, double max_value) {
     MatrixXd mat(size, size);
     
@@ -21,7 +21,7 @@ MatrixXd generate_random_matrix(unsigned int size, double min_value, double max_
     return mat;
 }
 
-// Función para multiplicar matrices 
+// Create and multiply two random matrices with double values.
 void multiplicar_matrix(unsigned int size, double min_value, double max_value, bool verbose=false) {
     MatrixXd mat1 = generate_random_matrix(size, min_value, max_value);
     MatrixXd mat2 = generate_random_matrix(size, min_value, max_value);
