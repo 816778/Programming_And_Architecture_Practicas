@@ -3,6 +3,7 @@
         "*.jj": "java",
         "iostream": "cpp",
         "ostream": "cpp",
-        "new": "cpp"
+        "new": "cpp",
+        "thread": "cpp"
     }
 }
