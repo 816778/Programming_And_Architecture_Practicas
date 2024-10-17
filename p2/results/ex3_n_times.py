@@ -173,7 +173,7 @@ def write_results_to_file(file_path, avg_time_init_matrix, avg_time_multiplicati
         file.write(f"{'100.00':>15} {total_seconds:>15.5f} {int(total_calls):>20} {int(total_errors):>15} {'total':<15}\n")
 
 
-def detect_high_deviation(avg_time_init_matrix, avg_time_multiplication_matrix, avg_syscall_stats, threshold=1):
+def detect_high_deviation(avg_time_init_matrix, avg_time_multiplication_matrix, avg_syscall_stats, threshold=0.9):
     # Inicializar los vectores de resultados
     names = []       # Para almacenar "ini_matrix", "mult_matrix" o el nombre de la syscall
     measures = []    # Para almacenar "time" o el nombre de la medida (stat_name)
@@ -199,7 +199,7 @@ def detect_high_deviation(avg_time_init_matrix, avg_time_multiplication_matrix, 
     # Verificar desviación estándar alta en las llamadas al sistema
     for syscall_name, stats in avg_syscall_stats.items():
         for stat_name, (mean, stddev) in stats.items():
-            if mean > 1 and stddev / mean > threshold:
+            if stat_name != "percentage_time" and mean > 0.9 and stddev / mean > threshold:
                 names.append(syscall_name)
                 measures.append(stat_name)
                 means.append(mean)

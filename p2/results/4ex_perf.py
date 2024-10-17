@@ -108,8 +108,41 @@ def normalize_matrices(my_matrix, eigen_matrix):
     return my_matrix_normalized, eigen_matrix_normalized
 
 
+def plot_grafic():
+    # Preparar los datos para el gráfico
+    metrics = list(my_matrix.keys())
+    my_values = list(my_matrix.values())
+    eigen_values = list(eigen_matrix.values())
+
+    x = np.arange(len(metrics))  # Índices para las métricas
+    width = 0.4  # Ancho de las barras
+
+    # Crear el gráfico
+    fig, ax = plt.subplots(figsize=(12, 6))
+
+    # Gráfico de barras con escala logarítmica
+    ax.bar(x - width/2, my_values, width, label='My Implementation', color='b', log=True)
+    ax.bar(x + width/2, eigen_values, width, label='Eigen Implementation', color='g', log=True)
+
+    # Añadir etiquetas y leyenda
+    ax.set_xlabel('Metric')
+    ax.set_ylabel('Value (Log Scale)')
+    ax.set_title('Comparative Metrics: Standard vs. Eigen Implementation')
+    ax.set_xticks(x)
+    ax.set_xticklabels(metrics, rotation=45, ha='right')
+    ax.legend()
+
+    # Añadir valores encima de las barras (opcional)
+    for i in range(len(metrics)):
+        ax.text(x[i] - width/2, my_values[i], f'{my_values[i]:.0e}', ha='center', va='bottom', color='blue', fontsize=9)
+        ax.text(x[i] + width/2, eigen_values[i], f'{eigen_values[i]:.0e}', ha='center', va='bottom', color='green', fontsize=9)
+
+    plt.tight_layout()
+    plt.show()
 
 if __name__ == "__main__":
+    plot_grafic()
+    exit()
     my_matrix, eigen_matrix = normalize_matrices(my_matrix, eigen_matrix)
     print(my_matrix)
     print(eigen_matrix)
