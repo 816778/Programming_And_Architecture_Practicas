@@ -6,6 +6,8 @@
 #include <thread>
 #include <utility>
 #include <vector>
+#include <chrono>
+#include <fstream>
 
 using my_float = long double;
 
@@ -21,8 +23,8 @@ pi_taylor_chunk(my_float &output,
 std::pair<size_t, size_t>
 usage(int argc, const char *argv[]) {
     // read the number of steps from the command line
-    if (argc != 3) {
-        std::cerr << "Invalid syntax: pi_taylor <steps> <threads>" << std::endl;
+    if (argc < 3 || argc > 4) {
+        std::cerr << "Usage: pi_taylor_parallel <steps> <threads> [output_file]" << std::endl;
         exit(1);
     }
 
@@ -48,6 +50,9 @@ int main(int argc, const char *argv[]) {
 
     // please complete missing parts
     std::thread* branch = new std::thread[threads];
+
+    auto start = std::chrono::high_resolution_clock::now();
+
     for (size_t i = 0; i < threads; i++) {
         branch[i] = std::thread(pi_taylor_chunk, std::ref(pi_branch[i]), i, steps * i / threads, steps * (i + 1) / threads);
     }
@@ -57,8 +62,21 @@ int main(int argc, const char *argv[]) {
         pi += pi_branch[i];
     }
 
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed = end - start;
+
     std::cout << "For " << steps << ", pi value: "
         << std::setprecision(std::numeric_limits<long double>::digits10 + 1)
         << pi << std::endl;
+
+    std::string output_file = (argc == 4) ? argv[3] : "results/4_execution_times.txt";
+
+    std::ofstream outfile(output_file, std::ios::app); // Modo append
+    if (outfile.is_open()) {
+        outfile << threads << "," << elapsed.count() << std::endl;
+        outfile.close();
+    } else {
+        std::cerr << "Error opening file!" << std::endl;
+    }
 }
 

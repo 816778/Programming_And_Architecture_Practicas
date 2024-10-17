@@ -10,12 +10,23 @@
 using my_float = float;
 
 void
-pi_taylor_chunk(my_float &output,
+pi_taylor_chunk_0(my_float &output,
         size_t thread_id, size_t start_step, size_t stop_step) {
 
     output = 0.0f;
     for (size_t i = start_step; i < stop_step; i++) output += (i % 2 == 0 ? 1 : -1) / (2.0f * i + 1);
     output *= 4.0f;
+}
+
+void pi_taylor_chunk(my_float &output, size_t start_step, size_t stop_step) {
+    output = 0.0f;
+    my_float c = 0.0f; // Compensación para Kahan Summation
+    for (size_t i = start_step; i < stop_step; i++) {
+        my_float y = (i % 2 == 0 ? 1.0f : -1.0f) / (2.0f * i + 1) - c;
+        my_float t = output + y;
+        c = (t - output) - y; // Se calcula la nueva compensación
+        output = t;
+    }
 }
 
 std::pair<size_t, size_t>
@@ -59,6 +70,7 @@ int main(int argc, const char *argv[]) {
         c = (t - pi) - y;
         pi = t;
     }
+    
 
     std::cout << "For " << steps << ", pi value: "
         << std::setprecision(std::numeric_limits<long double>::digits10 + 1)

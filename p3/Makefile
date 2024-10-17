@@ -12,6 +12,9 @@ SRC_DIR := src
 # Build directory
 BUILD_DIR := build
 
+$(BUILD_DIR):
+	mkdir -p $(BUILD_DIR)
+	
 # Source files
 SRCS := $(wildcard $(SRC_DIR)/*.cc)
 
