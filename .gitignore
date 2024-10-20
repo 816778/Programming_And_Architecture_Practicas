@@ -60,3 +60,5 @@ p1\eigen-3.4.0
 execuable/*
 !execuable/ejecutables.txt
 *.pdf
+/entrega
+entrega
