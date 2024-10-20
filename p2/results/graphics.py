@@ -37,7 +37,7 @@ def read_times_from_file(filename):
     return size, real_times, user_times, sys_times
 
 def parse_time_string_to_ms(time_str):
-    """Convierte un string de tiempo (como '0m2,524s') a milisegundos en formato float."""
+    """Converts a time string (like '0m2,524s') to milliseconds in float format."""
     minutes, seconds = time_str.split('m')
     seconds = seconds.replace('s', '').replace(',', '.') 
     total_seconds = float(minutes) * 60 + float(seconds)
@@ -80,9 +80,9 @@ def plot_times(size, real_times, user_times, sys_times, title):
     plt.plot(size, user_times, label="User Time", marker='o')
     plt.plot(size, sys_times, label="Sys Time", marker='o')
 
-    plt.title(f'Comparación de Tiempos: {title}')
-    plt.xlabel('Tamaño de la Matriz (Size)')
-    plt.ylabel('Tiempo (Segundos)')
+    plt.title(f'Time comparison: {title}')
+    plt.xlabel('Matrix size')
+    plt.ylabel('Time (seconds)')
 
     plt.legend()
     plt.grid(True)
@@ -101,9 +101,9 @@ def compare_two_files(file1, file2, file3, title):
 
     plt.figure(figsize=(10, 6))
 
-    plt.plot(size1, real_times1, label=f"Real Time My implementation", marker='o', linestyle='-', color='b')
-    plt.plot(size1, user_times1, label=f"User Time My implementation", marker='o', linestyle='--', color='b')
-    plt.plot(size1, sys_times1, label=f"Sys Time My implementation", marker='o', linestyle=':', color='b')
+    plt.plot(size1, real_times1, label=f"Real Time Our implementation", marker='o', linestyle='-', color='b')
+    plt.plot(size1, user_times1, label=f"User Time Our implementation", marker='o', linestyle='--', color='b')
+    plt.plot(size1, sys_times1, label=f"Sys Time Our implementation", marker='o', linestyle=':', color='b')
 
     plt.plot(size2, time_init_matrix, label="Time Init Matrix", marker='o', linestyle='-', color='r')
     plt.plot(size2, time_multiplication_matrix, label="Time Multiplication Matrix", marker='o', linestyle='--', color='r')
@@ -113,7 +113,7 @@ def compare_two_files(file1, file2, file3, title):
 
     plt.title(title)
     plt.xlabel('Size matrix')
-    plt.ylabel('Time (Miliseconds)')
+    plt.ylabel('Time (Milliseconds)')
 
     plt.subplots_adjust(
         top=0.945,

@@ -31,7 +31,7 @@ max_value=$2
 N=$3
 num_repeticiones=$4
 
-echo "Compilando ficheros..."
+echo "Compiling files..."
 g++ src/matrix.cpp -o $FOLDER_EXE/matrix
 g++ -O2 -Wall -I p2/eigen-3.4.0/ src/matrix_eigen.cpp -o $FOLDER_EXE/eigen_matrix
 
@@ -39,7 +39,7 @@ g++ -O2 -Wall -I p2/eigen-3.4.0/ src/matrix_eigen.cpp -o $FOLDER_EXE/eigen_matri
 output_file="$FOLDER_RESULT_MY_MATRIX/ex4_perf_matrix.txt"
 output_file_e="$FOLDER_RESULT_EIGEN/ex4_perf_eigen.txt"
 
-echo "Ejecutando..."
+echo "Running..."
 > $output_file
 > $output_file_e
 

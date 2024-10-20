@@ -50,7 +50,7 @@ def plot_comparative_bars(my_matrix, eigen_matrix):
 
     # Si no hay diferencias significativas, retornar sin hacer nada
     if not metrics:
-        print("No hay métricas con más del 90% de diferencia.")
+        print("There are no metrics with more than 90% difference.")
         return
     
     # Crear gráfico de barras
@@ -66,7 +66,7 @@ def plot_comparative_bars(my_matrix, eigen_matrix):
     # Añadir etiquetas y título
     ax.set_xlabel('Metrics')
     ax.set_ylabel('Values')
-    ax.set_title('Comparation my matrix and eigen_matrix (difference > 90%)')
+    ax.set_title('Comparing our matrix and eigen_matrix (difference > 90%)')
     ax.set_xticks(x)
     ax.set_xticklabels(metrics, rotation=45, ha="right")
 
@@ -121,7 +121,7 @@ def plot_grafic():
     fig, ax = plt.subplots(figsize=(12, 6))
 
     # Gráfico de barras con escala logarítmica
-    ax.bar(x - width/2, my_values, width, label='My Implementation', color='b', log=True)
+    ax.bar(x - width/2, my_values, width, label='Our Implementation', color='b', log=True)
     ax.bar(x + width/2, eigen_values, width, label='Eigen Implementation', color='g', log=True)
 
     # Añadir etiquetas y leyenda

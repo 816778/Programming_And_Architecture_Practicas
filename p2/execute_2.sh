@@ -26,7 +26,7 @@ size_inicial=$3
 size_final=$4
 incremento=$5
 
-echo "Compilando ficheros..."
+echo "Compiling files..."
 g++ src/matrix.cpp -o $FOLDER_EXE/matrix
 g++ -O2 -Wall -I p2/eigen-3.4.0/ src/matrix_eigen.cpp -o $FOLDER_EXE/eigen_matrix
 

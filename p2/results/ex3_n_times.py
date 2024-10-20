@@ -132,14 +132,12 @@ def calculate_average_results(results):
 
 def write_results_to_file(file_path, avg_time_init_matrix, avg_time_multiplication_matrix, avg_syscall_stats):
     with open(file_path, 'a') as file:  # Usar 'a' para agregar al final del archivo
-        file.write("\nPromedio de Resultados (Media y Desviación Estándar):\n")
-        
+        file.write("\nResults Average (Mean and Standard Deviation):\n")
         # Escribir los tiempos promedio (5 decimales) junto con la desviación estándar
         avg_init, std_init = avg_time_init_matrix
         avg_mult, std_mult = avg_time_multiplication_matrix
-        
-        file.write(f"Tiempo de inicialización de matriz: {avg_init:.5f} (std: {std_init:.5f})\n")
-        file.write(f"Tiempo de multiplicación de matriz: {avg_mult:.5f} (std: {std_mult:.5f})\n")
+        file.write(f"Matrix Initialization Time: {avg_init:.5f} (std: {std_init:.5f})\n")
+        file.write(f"Matrix Multiplication Time: {avg_mult:.5f} (std: {std_mult:.5f})\n")
         
         # Escribir la tabla de llamadas al sistema con media y desviación estándar
         file.write(f"{'%-time (avg)':<15} {'seconds (avg)':<15} {'usecs/call (avg)':<20} "
@@ -228,9 +226,9 @@ def plot_means_and_stddevs(names, measures, means, stddevs):
     ax.bar(x, means, yerr=stddevs, capsize=5, color='lightblue', label='Media', align='center')
 
     # Añadir etiquetas y título
-    ax.set_xlabel('Métrica')
-    ax.set_ylabel('Valor (Media y Desviación Estándar)')
-    ax.set_title('Medias y Desviaciones Estándar de las Métricas')
+    ax.set_xlabel('Metric')
+    ax.set_ylabel('Value (Mean and Standard Deviation)')
+    ax.set_title('Comparative Metrics: Standard vs. Eigen Implementation')
 
     # Rotar etiquetas del eje X para mejor legibilidad
     ax.set_xticks(x)
@@ -262,4 +260,4 @@ if __name__ == "__main__":
         if names:
             plot_means_and_stddevs(names, measures, means, stddevs)
         else:
-            print("No se ha detectado desviación estándar alta en ninguna métrica.")
+            print("No one high deviation was found in any metric.")
