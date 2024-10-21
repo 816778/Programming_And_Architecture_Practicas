@@ -14,6 +14,8 @@ using my_float = long double;
 void
 pi_taylor_chunk(std::vector<my_float> &output,
         size_t thread_id, size_t start_step, size_t stop_step){
+    
+    auto start_time = std::chrono::high_resolution_clock::now();
 
     my_float sum = 0.0;
 
@@ -22,6 +24,15 @@ pi_taylor_chunk(std::vector<my_float> &output,
         sum += term;
     }
     output[thread_id] = sum;
+    auto end_time = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> exec_time = end_time - start_time;
+
+    // Imprimir el identificador del hilo y su tiempo de ejecución
+    std::cout << "Thread " + std::to_string(thread_id) + 
+             "\n" + std::to_string(start_time.time_since_epoch().count()) +
+             "\n" + std::to_string(end_time.time_since_epoch().count()) +       
+            "\n" + std::to_string(exec_time.count()) + "\n";  //execution time:  
+
 }
 
 

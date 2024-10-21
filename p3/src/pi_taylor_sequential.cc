@@ -7,12 +7,16 @@
 // Allow to change the floating point type
 using my_float = long double;
 
+
 my_float pi_taylor(size_t steps) {
 
     my_float pi = 0.0f;
-    for (size_t i = 0; i < steps; i++) pi += (i % 2 == 0 ? 1 : -1) / (2.0f * i + 1);
+    for (size_t i = 0; i < steps; i++){
+        pi += (i % 2 == 0 ? 1 : -1) / (2.0f * i + 1);
+    }
     return 4.0f * pi;
 }
+
 
 int main(int argc, const char *argv[]) {
 

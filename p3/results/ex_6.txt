@@ -1,0 +1,66 @@
+For 4294967295, pi value: 3.141592653822626409
+For 4294967295, pi value: 3.141592653822626409
+For 4294967295, pi value: 3.141592653822626409
+For 4294967295, pi value: 3.141592653822626409
+For 4294967295, pi value: 3.141592653822626409
+For 4294967295, pi value: 3.141592653822626409
+For 4294967295, pi value: 3.141592653822626409
+For 4294967295, pi value: 3.141592653822626409
+For 4294967295, pi value: 3.141592653822626409
+For 4294967295, pi value: 3.141592653822626409
+For 4294967295, pi value: 3.141592653822626409
+For 4294967295, pi value: 3.141592653822626409
+For 4294967295, pi value: 3.141592653822626409
+For 4294967295, pi value: 3.141592653822626409
+For 4294967295, pi value: 3.141592653822626409
+
+ Performance counter stats for './build/pi_taylor_parallel 4294967295 4' (15 runs):
+
+          4.903,28 msec task-clock                       #    3,912 CPUs utilized               ( +-  1,85% )
+                27      context-switches                 #    5,507 /sec                        ( +-  7,46% )
+                 5      cpu-migrations                   #    1,020 /sec                        ( +- 13,22% )
+               144      page-faults                      #   29,368 /sec                        ( +-  0,16% )
+    17.638.508.283      cycles                           #    3,597 GHz                         ( +-  1,16% )
+    64.453.670.119      instructions                     #    3,65  insn per cycle              ( +-  0,00% )
+    12.889.676.187      branches                         #    2,629 G/sec                       ( +-  0,00% )
+            85.413      branch-misses                    #    0,00% of all branches             ( +- 16,34% )
+                        TopdownL1                 #     24,8 %  tma_backend_bound      
+                                                  #      1,8 %  tma_bad_speculation    
+                                                  #      8,7 %  tma_frontend_bound     
+                                                  #     64,6 %  tma_retiring             ( +-  0,14% )
+
+            1,2533 +- 0,0350 seconds time elapsed  ( +-  2,79% )
+
+For 4294967295, pi value: 3.141592653822625017
+For 4294967295, pi value: 3.141592653822625017
+For 4294967295, pi value: 3.141592653822625017
+For 4294967295, pi value: 3.141592653822625017
+For 4294967295, pi value: 3.141592653822625017
+For 4294967295, pi value: 3.141592653822625017
+For 4294967295, pi value: 3.141592653822625017
+For 4294967295, pi value: 3.141592653822625017
+For 4294967295, pi value: 3.141592653822625017
+For 4294967295, pi value: 3.141592653822625017
+For 4294967295, pi value: 3.141592653822625017
+For 4294967295, pi value: 3.141592653822625017
+For 4294967295, pi value: 3.141592653822625017
+For 4294967295, pi value: 3.141592653822625017
+For 4294967295, pi value: 3.141592653822625017
+
+ Performance counter stats for './build/pi_taylor_parallel 4294967295 8' (15 runs):
+
+         10.121,62 msec task-clock                       #    7,665 CPUs utilized               ( +-  0,21% )
+               447      context-switches                 #   44,163 /sec                        ( +- 29,43% )
+                 4      cpu-migrations                   #    0,395 /sec                        ( +- 49,37% )
+               152      page-faults                      #   15,017 /sec                        ( +-  0,15% )
+    34.021.514.100      cycles                           #    3,361 GHz                         ( +-  0,44% )
+    64.481.120.893      instructions                     #    1,90  insn per cycle              ( +-  0,00% )
+    12.894.194.708      branches                         #    1,274 G/sec                       ( +-  0,00% )
+           128.610      branch-misses                    #    0,00% of all branches             ( +- 15,95% )
+                        TopdownL1                 #      7,3 %  tma_backend_bound      
+                                                  #      9,2 %  tma_bad_speculation    
+                                                  #     21,1 %  tma_frontend_bound     
+                                                  #     62,4 %  tma_retiring             ( +-  0,15% )
+
+            1,3205 +- 0,0222 seconds time elapsed  ( +-  1,68% )
+

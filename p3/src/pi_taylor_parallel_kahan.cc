@@ -6,6 +6,7 @@
 #include <thread>
 #include <utility>
 #include <vector>
+#include <chrono>
 
 using my_float = float;
 
@@ -18,19 +19,26 @@ pi_taylor_chunk_0(my_float &output,
     output *= 4.0f;
 }
 
-void pi_taylor_chunk(my_float &output, size_t start_step, size_t stop_step) {
-    output = 0.0f;
-    my_float c = 0.0f; // Compensación para Kahan Summation
+void pi_taylor_chunk(std::vector<my_float> &output, size_t thread_id, size_t start_step, size_t stop_step) {
+    my_float sum = 0.0;
+    my_float c = 0.0; 
+
     for (size_t i = start_step; i < stop_step; i++) {
         my_float y = (i % 2 == 0 ? 1.0f : -1.0f) / (2.0f * i + 1) - c;
-        my_float t = output + y;
-        c = (t - output) - y; // Se calcula la nueva compensación
-        output = t;
+        my_float t = sum + y;
+        c = (t - sum) - y; // Se calcula la nueva compensación
+        sum = t;
     }
+    output[thread_id] = sum;
 }
 
-std::pair<size_t, size_t>
-usage(int argc, const char *argv[]) {
+
+void save_file(std::string output_file, int threads, std::chrono::duration<double> elapsed){
+    std::cout << threads << "," << elapsed.count() << std::endl;
+}
+
+
+std::pair<size_t, size_t>usage(int argc, const char *argv[]) {
     // read the number of steps from the command line
     if (argc != 3) {
         std::cerr << "Invalid syntax: pi_taylor <steps> <threads>" << std::endl;
@@ -48,6 +56,7 @@ usage(int argc, const char *argv[]) {
     return std::make_pair(steps, threads);
 }
 
+
 int main(int argc, const char *argv[]) {
 
 
@@ -55,25 +64,33 @@ int main(int argc, const char *argv[]) {
     auto steps = ret_pair.first;
     auto threads = ret_pair.second;
 
-    my_float pi = 0, *pi_branch = new my_float[threads], c = 0, y, t;
+    std::vector<my_float> pi_branch(threads);
+    std::vector<std::thread> branch;
+    auto start = std::chrono::high_resolution_clock::now();
 
-    // please complete missing parts
-    std::thread* branch = new std::thread[threads];
-    for (size_t i = 0; i < threads; i++) {
-        branch[i] = std::thread(pi_taylor_chunk, std::ref(pi_branch[i]), i, steps * i / threads, steps * (i + 1) / threads);
+    my_float pi = 0;
+
+    for (size_t i = 0; i < threads; ++i) {
+        size_t start_step = steps * i / threads;
+        size_t stop_step = steps * (i + 1) / threads;
+
+        // Create a thread for each chunk
+        branch.emplace_back(pi_taylor_chunk, std::ref(pi_branch), i, start_step, stop_step);
     }
 
+    // Join threads
     for (size_t i = 0; i < threads; i++) {
         branch[i].join();
-        y = pi_branch[i] - c;
-        t = pi + y;
-        c = (t - pi) - y;
-        pi = t;
+        pi += pi_branch[i];
     }
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed = end - start;
+    pi *= 4.0;
     
 
     std::cout << "For " << steps << ", pi value: "
         << std::setprecision(std::numeric_limits<long double>::digits10 + 1)
         << pi << std::endl;
+    save_file("", threads, elapsed);
 }
 
