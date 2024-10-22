@@ -24,7 +24,7 @@ Run the `execute.sh` script as follows:
 
 ## Laboratory 2
 
-This repository contains multiple exercises focused on matrix multiplication performance and system call analysis. The exercises involve custom matrix implementations, comparisons with the Eigen library, and profiling using tools such as gettimeofday(), strace, and perf. The results highlight differences in efficiency, performance metrics, and system behavior across different implementations.
+p2 contains multiple exercises focused on matrix multiplication performance and system call analysis. The exercises involve custom matrix implementations, comparisons with the Eigen library, and profiling using tools such as gettimeofday(), strace, and perf. The results highlight differences in efficiency, performance metrics, and system behavior across different implementations.
 
 
 2. **Exercise 2: Matrix Multiplication Timing**: 
@@ -46,5 +46,12 @@ This repository contains multiple exercises focused on matrix multiplication per
 ---
 
 ## Laboratory 3
+
+p3 contains exercises focused on parallel programming concepts, including load balancing, parallel reductions, and performance analysis. The exercises explore multi-threaded implementations, performance optimization techniques, and profiling using tools like perf and gettimeofday().
+1. **Exercise 1: Parallel π Approximation with Taylor Series**: 
+
+2. **Exercise 2: Matrix Multiplication Timing**: 
+
+3. **Exercise 3: Matrix Multiplication Timing**: 
 
 ---
