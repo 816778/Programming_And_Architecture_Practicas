@@ -27,7 +27,8 @@
 #include <thread>
 #include <vector>
 
-#include <thread_pool.hpp>
+//#include <thread_pool.hpp>
+#include <thread_pool_alpha.hpp>
 
 // Vec is a structure to store position (x,y,z) and color (r,g,b)
 struct Vec {
@@ -255,9 +256,9 @@ int main(int argc, char *argv[]){
         for (size_t j = 0; j < h_div; ++j) {
             // Define region boundaries
             int x0 = i * region_w;
-            int x1 = (i + 1) * region_w;
+            int x1 = (i == w_div - 1) ? w : (i + 1) * region_w; 
             int y0 = j * region_h;
-            int y1 = (j + 1) * region_h;
+            int y1 = (j == h_div - 1) ? h : (j + 1) * region_h;  
 
             // Create a region and submit a render task for it
             Region reg(x0, x1, y0, y1);

@@ -13,8 +13,8 @@ output_file="$RESULTS_FOLDER/ex_3.txt"
 echo "Running..."
 
 
-columns=(1 4 8 16)
-rows=(1 4 8 16)
+columns=(1 2 3 4 8 12 16)
+rows=(1 2 3 4 8 12 16)
 
 for col in "${columns[@]}"; do
     for row in "${rows[@]}"; do

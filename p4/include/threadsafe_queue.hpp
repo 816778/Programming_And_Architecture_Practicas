@@ -26,7 +26,7 @@ class threadsafe_queue
     void push(T new_value){
         std::lock_guard<std::mutex> lock(mtx);       // Lock the mutex
         data_queue.push(std::move(new_value));       // Push new element
-        data_cond.notify_one();                     // Notify one waiting thread
+        data_cond.notify_one();                      // Notify one waiting thread that new data is available.
     }       
 
     bool try_pop(T& value){
@@ -42,7 +42,7 @@ class threadsafe_queue
 	    std::unique_lock<std::mutex> lock(mtx);      // Lock the mutex with unique_lock for condition_variable
         data_cond.wait(lock, [this]{ return !data_queue.empty(); });  // Wait until data is available
         value = std::move(data_queue.front());       // Retrieve front item
-        data_queue.pop();       
+        data_queue.pop();
     }
 
     std::shared_ptr<T> wait_and_pop(){
