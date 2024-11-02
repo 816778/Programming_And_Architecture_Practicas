@@ -1,20 +1,17 @@
-# Makefile for compiling source code individually in src folder
-
 # Compiler
 CXX := g++
 
 # Compiler flags
 CXXFLAGS := -std=c++11 -O2
 
-# Source directory
+# Source and build directories
 SRC_DIR := src
-
-# Build directory
 BUILD_DIR := build
 
+# Ensure build directory exists
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
-	
+
 # Source files
 SRCS := $(wildcard $(SRC_DIR)/*.cc)
 
@@ -24,18 +21,18 @@ OBJS := $(patsubst $(SRC_DIR)/%.cc,$(BUILD_DIR)/%.o,$(SRCS))
 # Executable files
 EXECS := $(patsubst $(SRC_DIR)/%.cc,$(BUILD_DIR)/%,$(SRCS))
 
-# Rule to build object files
-$(BUILD_DIR)/%.o: $(SRC_DIR)/%.cc
+# Default target to build all executables
+all: $(EXECS)
+
+# Rule to compile object files from source files
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.cc | $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-# Rule to build executable files
+# Rule to build executables from object files
 $(BUILD_DIR)/%: $(BUILD_DIR)/%.o
 	$(CXX) $(CXXFLAGS) $< -o $@
 
-# Default target
-all: $(EXECS)
-
-# Clean target
+# Clean target to remove build artifacts
 clean:
 	rm -rf $(BUILD_DIR)
 

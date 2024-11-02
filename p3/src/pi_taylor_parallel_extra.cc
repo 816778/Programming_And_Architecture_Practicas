@@ -29,9 +29,9 @@ pi_taylor_chunk(std::vector<my_float> &output,
 
     // Imprimir el identificador del hilo y su tiempo de ejecución
     std::cout << "Thread " + std::to_string(thread_id) + 
-             "\n" + std::to_string(start_time.time_since_epoch().count()) +
-             "\n" + std::to_string(end_time.time_since_epoch().count()) +       
-            "\n" + std::to_string(exec_time.count()) + "\n";  //execution time:  
+             "," + std::to_string(start_time.time_since_epoch().count()) +
+             "," + std::to_string(end_time.time_since_epoch().count()) +       
+            "," + std::to_string(exec_time.count()) + "\n";  //execution time:  
 
 }
 
@@ -101,7 +101,7 @@ int main(int argc, const char *argv[]) {
         << std::setprecision(std::numeric_limits<long double>::digits10 + 1)
         << pi << std::endl;
 
-    std::string output_file = (argc == 4) ? argv[3] : "results/4_execution_times.txt";
-    save_file(output_file, threads, elapsed);
+    //std::string output_file = (argc == 4) ? argv[3] : "results/4_execution_times.txt";
+    // save_file(output_file, threads, elapsed);
 }
 

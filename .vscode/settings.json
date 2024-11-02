@@ -65,6 +65,8 @@
         "streambuf": "cpp",
         "cinttypes": "cpp",
         "typeinfo": "cpp",
-        "valarray": "cpp"
-    }
+        "valarray": "cpp",
+        "codecvt": "cpp"
+    },
+    "cmake.sourceDirectory": "/home/erika/Descargas/Master/Programming_and_Architecture_of_Computing_Systems/PACS_MASTER/p3"
 }

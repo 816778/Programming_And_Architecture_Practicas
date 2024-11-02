@@ -19,4 +19,4 @@ echo "Número de núcles = $thread"
 ./$BUILD_FOLDER/pi_taylor_parallel_extra "$steps" "$thread" 
 
 echo "##################################################################"
-./$BUILD_FOLDER/pi_taylor_parallel_extra "$steps" 4
+./$BUILD_FOLDER/pi_taylor_parallel_extra "$steps" 64

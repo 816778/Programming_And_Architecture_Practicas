@@ -35,7 +35,7 @@ def plot_init_end_times(data):
     plt.show()
 
 if __name__ == "__main__":
-    paths_csv = [RESULTS_FOLDER + 'ex_β_4.csv', RESULTS_FOLDER + 'ex_β_nucleo.csv']
+    paths_csv = [RESULTS_FOLDER + 'ex_β_64.csv', RESULTS_FOLDER + 'ex_β_nucleo.csv']
 
     for path_csv in paths_csv:
         data = pd.read_csv(path_csv)
