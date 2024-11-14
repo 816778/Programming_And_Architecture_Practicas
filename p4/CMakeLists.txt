@@ -1,3 +1,7 @@
 ADD_PACS_EXECUTABLE(TARGET smallpt_thread_pool SOURCES src/smallpt_thread_pool.cpp)
 target_include_directories(smallpt_thread_pool
         PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
+
+        ADD_PACS_EXECUTABLE(TARGET find_primes SOURCES src/find_primes.cpp)
+target_include_directories(find_primes
+        PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")

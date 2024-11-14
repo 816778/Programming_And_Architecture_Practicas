@@ -47,7 +47,8 @@ private:
   
 
   public:
-    thread_pool(size_t num_threads = std::thread::hardware_concurrency()) : _done(false), _joiner(_threads){
+    thread_pool(size_t num_threads = std::thread::hardware_concurrency()) 
+    : _done(false), _joiner(_threads), _active_tasks(0) {
         for (size_t i = 0; i < num_threads; ++i){
           _threads.emplace_back(&thread_pool::worker_thread, this);  // Start worker threads
         }

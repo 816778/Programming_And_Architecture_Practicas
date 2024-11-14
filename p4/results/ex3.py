@@ -43,7 +43,11 @@ def read_time_data(filename):
 
 
 
-def plot_3d_time_mesh(time_data):
+def plot_3d_time_mesh(time_data, remove_largest=False):
+    if remove_largest:
+        # Sort the data by time_ms in descending order and remove the two largest entries
+        time_data = sorted(time_data, key=lambda x: x["time_ms"], reverse=True)[3:]
+
     # Extraer los datos de columna, fila y tiempo en listas separadas
     columns = np.array([entry["column"] for entry in time_data])
     rows = np.array([entry["row"] for entry in time_data])
