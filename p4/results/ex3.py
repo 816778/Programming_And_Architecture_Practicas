@@ -61,10 +61,10 @@ def plot_3d_time_mesh(time_data, remove_largest=False):
     ax.plot_trisurf(columns, rows, times, cmap="viridis", edgecolor='none')
 
     # Etiquetas de los ejes
-    ax.set_xlabel("Columnas")
-    ax.set_ylabel("Filas")
-    ax.set_zlabel("Tiempo (ms)")
-    ax.set_title("Tiempo de Ejecución en función de Columnas y Filas")
+    ax.set_xlabel("Columns")
+    ax.set_ylabel("Rows")
+    ax.set_zlabel("Time (ms)")
+    ax.set_title("Execution Time as a Function of Columns and Rows")
 
     # Mostrar el gráfico
     plt.show()
