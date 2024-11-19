@@ -22,7 +22,7 @@ private:
     std::atomic<int> _active_tasks;                          // Counter for active tasks
 
     /**
-     * continuously tries to pop tasks from _work_queue and execute them.
+     * Continuously tries to pop tasks from _work_queue and execute them.
      * If the queue is empty, it calls std::this_thread::yield() to indicate to the OS that it’s idle,
      * allowing other threads to use the CPU.
      */
@@ -60,11 +60,10 @@ private:
   }
 
   /**
-   * Se asegura de que todos los hilos terminen sus tareas y se "unen" 
-   * (join) al thread_pool antes de finalizar. La función wait establece 
-   * la bandera _done en true, lo que hace que cada hilo en el thread_pool 
-   * finalice su bucle de trabajo. 
-   */
+   * Ensures that all threads finish their tasks and join the thread_pool before
+   * exiting. The wait function sets the _done flag to true, causing each thread
+   * in the thread_pool to exit its work loop.
+  */
   void wait(){
     std::unique_lock<std::mutex> lock(_mutex);
     _cv.wait(lock, [this] { return _active_tasks == 0 && _work_queue.empty(); });
@@ -77,9 +76,9 @@ private:
   }
 
   /**
-   * Permite agregar nuevas tareas a la cola de trabajo _work_queue. Las tareas se almacenan 
-   * en la cola para ser ejecutadas por los hilos del thread_pool
-   */
+   * Allows adding new tasks to the _work_queue. Tasks are stored in the queue
+   * to be executed by the thread_pool threads.
+  */
   template<typename F>void submit(F f){
 	  _work_queue.push(std::function<void()>(f));  // Wrap and push the task into the queue
     _cv.notify_all();

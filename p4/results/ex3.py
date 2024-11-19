@@ -7,16 +7,16 @@ RESULTS_FOLDER="results/"
 
 
 def plot_time_vs_regions(time_data):
-    # Extract data from time_data
-    x = [entry["time_ms"] for entry in time_data]  # Execution time in milliseconds
-    y = [entry["column"] * entry["row"] for entry in time_data]  # Number of regions (columns * rows)
+    # Extract data from time_data.
+    x = [entry["time_ms"] for entry in time_data]  # Execution time in milliseconds.
+    y = [entry["column"] * entry["row"] for entry in time_data]  # Number of regions (columns * rows).
     
-    # Create the plot
+    # Create the plot.
     plt.figure(figsize=(10, 6))
     plt.scatter(x, y, color='blue', marker='o', label="Execution Time vs. Number of Regions")
-    plt.plot(x, y, linestyle='--', color='gray', alpha=0.5)  # Add line to connect points
+    plt.plot(x, y, linestyle='--', color='gray', alpha=0.5)  # Add line to connect points.
 
-    # Labels and title
+    # Labels and title.
     plt.xlabel("Execution Time (ms)")
     plt.ylabel("Number of Regions (columns * rows)")
     plt.title("Relationship between Execution Time and Number of Image Regions")
@@ -29,11 +29,11 @@ def read_time_data(filename):
     data = []
     with open(filename, 'r') as file:
         for line in file:
-            # Eliminar espacios y saltos de línea al final de cada línea
+            # Remove spaces and line breaks at the end of each line.
             line = line.strip()
-            # Dividir la línea en tres partes: columna, fila y tiempo
+            # Split the line into three parts: column, row, and time.
             column, row, time_ms = line.split(',')
-            # Convertir los valores a enteros y almacenar en un diccionario
+            # Convert the values to integers and store them in a dictionary.
             data.append({
                 "column": int(column),
                 "row": int(row),
@@ -44,29 +44,31 @@ def read_time_data(filename):
 
 
 def plot_3d_time_mesh(time_data, remove_largest=False):
+
     if remove_largest:
-        # Sort the data by time_ms in descending order and remove the two largest entries
+        # Sort the data by time_ms in descending order and remove the two largest entries.
         time_data = sorted(time_data, key=lambda x: x["time_ms"], reverse=True)[3:]
 
-    # Extraer los datos de columna, fila y tiempo en listas separadas
+    # Get the data from the time_data.
     columns = np.array([entry["column"] for entry in time_data])
     rows = np.array([entry["row"] for entry in time_data])
     times = np.array([entry["time_ms"] for entry in time_data])
 
-    # Crear una figura en 3D
+    # Create a 3D figure and axis.
     fig = plt.figure(figsize=(10, 7))
     ax = fig.add_subplot(111, projection='3d')
 
-    # Graficar la malla
+    # Grapf the mesh.
     ax.plot_trisurf(columns, rows, times, cmap="viridis", edgecolor='none')
 
-    # Etiquetas de los ejes
+    # Tags and title.
     ax.set_xlabel("Columns")
     ax.set_ylabel("Rows")
     ax.set_zlabel("Time (ms)")
     ax.set_title("Execution Time as a Function of Columns and Rows")
+    # ax.set_zlim(3000, 8000)
 
-    # Mostrar el gráfico
+    # Show the plot.
     plt.show()
 
 

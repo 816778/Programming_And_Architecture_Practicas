@@ -1,17 +1,16 @@
 #!/bin/bash
 
-# Asumiendo que el directorio actual es build-debug/Laboratory-3
+# Assuming that the current directory is build-debug/Laboratory-3
 BUILD_FOLDER="build"
 RESULTS_FOLDER="results"
 
-# Compilar el programa
+# Compile the code.
 make 
 
 output_file="$RESULTS_FOLDER/ex_3.txt"
 > $output_file
 
 echo "Running..."
-
 
 columns=(1 2 3 4 8 12 16)
 rows=(1 2 3 4 8 12 16)

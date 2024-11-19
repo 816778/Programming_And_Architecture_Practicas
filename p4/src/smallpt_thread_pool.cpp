@@ -52,8 +52,6 @@ struct Vec {
     double dot(const Vec &b) const {
         return x*b.x+y*b.y+z*b.z;
     }
-    // % is cross product
-    // rallen ??? why no const here?
     Vec operator%(Vec&b){
         return Vec(y*b.z-z*b.y,z*b.x-x*b.z,x*b.y-y*b.x);
     }

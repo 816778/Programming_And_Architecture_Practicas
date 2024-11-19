@@ -6,7 +6,7 @@
 #include <string>
 #include <mutex>
 #include <chrono>
-#include "thread_pool_alpha.hpp"  // Assume thread_pool.hpp includes the thread pool and threadsafe_queue implementation
+#include "thread_pool_alpha.hpp"
 
 std::mutex result_mutex;  // Mutex to protect access to the results vector
 
