@@ -75,9 +75,25 @@ int main(int argc, char** argv)
     err = clGetPlatformInfo(platforms_ids[i], CL_PLATFORM_NAME, t_buf, str_buffer, &e_buf);
     cl_error (err, "Error: Failed to get info of the platform\n");
     printf( "\t[%d]-Platform Name: %s\n", i, str_buffer);
+
+    // ***Task***: print on the screen the name, host_timer_resolution, vendor, versionm, ...
+
+    err = clGetPlatformInfo(platforms_ids[i], CL_PLATFORM_HOST_TIMER_RESOLUTION, t_buf, str_buffer, &e_buf);
+    cl_error (err, "Error: Failed to get info of the platform\n");
+    printf( "\t[%d]-Platform Host Timer Resolution: %s\n", i, str_buffer);
+
+    err = clGetPlatformInfo(platforms_ids[i], CL_PLATFORM_VENDOR, t_buf, str_buffer, &e_buf);
+    cl_error (err, "Error: Failed to get info of the platform\n");
+    printf( "\t[%d]-Platform Vendor: %s\n", i, str_buffer);
+
+    err = clGetPlatformInfo(platforms_ids[i], CL_PLATFORM_VERSION, t_buf, str_buffer, &e_buf);
+    cl_error (err, "Error: Failed to get info of the platform\n");
+    printf( "\t[%d]-Platform Version: %s\n", i, str_buffer);
+
   }
   printf("\n");
-  // ***Task***: print on the screen the name, host_timer_resolution, vendor, versionm, ...
+
+
     
   // 2. Scan for devices in each platform
   for (int i = 0; i < n_platforms; i++ ){
@@ -91,27 +107,149 @@ int main(int argc, char** argv)
       printf("\t\t [%d]-Platform [%d]-Device CL_DEVICE_NAME: %s\n", i, j,str_buffer);
 
       cl_uint max_compute_units_available;
+      cl_ulong cache_size, global_mem_size, local_mem_size, max_work_group_size, profiling_timer_resolution;
       err = clGetDeviceInfo(devices_ids[i][j], CL_DEVICE_MAX_COMPUTE_UNITS, sizeof(max_compute_units_available), &max_compute_units_available, NULL);
       cl_error(err, "clGetDeviceInfo: Getting device max compute units available");
-      printf("\t\t [%d]-Platform [%d]-Device CL_DEVICE_MAX_COMPUTE_UNITS: %d\n\n", i, j, max_compute_units_available);
+      printf("\t\t [%d]-Platform [%d]-Device CL_DEVICE_MAX_COMPUTE_UNITS: %d\n", i, j, max_compute_units_available);
+
+      // ***Task***: print on the screen the cache size, global mem size, local memsize, max work group size, profiling timer resolution and ... of each device
+
+      err = clGetDeviceInfo(devices_ids[i][j], CL_DEVICE_GLOBAL_MEM_CACHE_SIZE, sizeof(cache_size), &cache_size, NULL);
+      cl_error(err, "clGetDeviceInfo: Getting device cache size");
+      printf("\t\t [%d]-Platform [%d]-Device CL_DEVICE_GLOBAL_MEM_CACHE_SIZE: %lu\n", i, j, cache_size);
+
+      err = clGetDeviceInfo(devices_ids[i][j], CL_DEVICE_GLOBAL_MEM_SIZE, sizeof(global_mem_size), &global_mem_size, NULL);
+      cl_error(err, "clGetDeviceInfo: Getting device global mem size");
+      printf("\t\t [%d]-Platform [%d]-Device CL_DEVICE_GLOBAL_MEM_SIZE: %lu\n", i, j, global_mem_size);
+
+      err = clGetDeviceInfo(devices_ids[i][j], CL_DEVICE_LOCAL_MEM_SIZE, sizeof(local_mem_size), &local_mem_size, NULL);
+      cl_error(err, "clGetDeviceInfo: Getting device local mem size");
+      printf("\t\t [%d]-Platform [%d]-Device CL_DEVICE_LOCAL_MEM_SIZE: %lu\n", i, j, local_mem_size);
+
+      err = clGetDeviceInfo(devices_ids[i][j], CL_DEVICE_MAX_WORK_GROUP_SIZE, sizeof(max_work_group_size), &max_work_group_size, NULL);
+      cl_error(err, "clGetDeviceInfo: Getting device max work group size");
+      printf("\t\t [%d]-Platform [%d]-Device CL_DEVICE_MAX_WORK_GROUP_SIZE: %lu\n", i, j, max_work_group_size);
+
+      err = clGetDeviceInfo(devices_ids[i][j], CL_DEVICE_PROFILING_TIMER_RESOLUTION, sizeof(profiling_timer_resolution), &profiling_timer_resolution, NULL);
+      cl_error(err, "clGetDeviceInfo: Getting device profiling timer resolution");
+      printf("\t\t [%d]-Platform [%d]-Device CL_DEVICE_PROFILING_TIMER_RESOLUTION: %lu\n\n", i, j, profiling_timer_resolution);
+
     }
   } 
-  // ***Task***: print on the screen the cache size, global mem size, local memsize, max work group size, profiling timer resolution and ... of each device
-
 
 
   // 3. Create a context, with a device
-  cl_context_properties properties[] = { CL_CONTEXT_PLATFORM, (cl_context_properties)platforms_ids[/***???***/], 0};
-  context = clCreateContext(properties, /***???***/, NULL, NULL, &err);
+  cl_context_properties properties[] = { CL_CONTEXT_PLATFORM, (cl_context_properties)platforms_ids[0], 0};
+  context = clCreateContext(properties, 1, &devices_ids[0][0], NULL, NULL, &err);
   cl_error(err, "Failed to create a compute context\n");
 
   // 4. Create a command queue
   cl_command_queue_properties proprt[] = { CL_QUEUE_PROPERTIES, CL_QUEUE_PROFILING_ENABLE, 0 };
-  command_queue = clCreateCommandQueueWithProperties( /***???***/, proprt, &err);
+  command_queue = clCreateCommandQueueWithProperties(context, devices_ids[0][0]
+    , proprt, &err);
   cl_error(err, "Failed to create a command queue\n");
 
   /* It is still missing the runtime part of the OpenCL program: createBuffers, createProgram, createKernel, setKernelArg, ... */
+
+  // Calculate size of the file
+  FILE *fileHandler = fopen("kernel.cl", "r");
+  fseek(fileHandler, 0, SEEK_END);
+  size_t fileSize = ftell(fileHandler);
+  rewind(fileHandler);
+
+  // read kernel source into buffer
+  char * sourceCode = (char*) malloc(fileSize + 1);
+  sourceCode[fileSize] = '\0';
+  fread(sourceCode, sizeof(char), fileSize, fileHandler);
+  fclose(fileHandler);
+
+  // create program from buffer
+  cl_program program = clCreateProgramWithSource(context, 1, (const char**)&sourceCode, &fileSize, &err);
+  cl_error(err, "Failed to create program with source\n");
+  free(sourceCode);
+
+    // Build the executable and check errors
+  err = clBuildProgram(program, 0, NULL, NULL, NULL, NULL);
+  if (err != CL_SUCCESS){
+    size_t len;
+    char buffer[2048];
+
+    printf("Error: Some error at building process.\n");
+    clGetProgramBuildInfo(program, devices_ids[0][0], CL_PROGRAM_BUILD_LOG, sizeof(buffer), buffer, &len);
+    printf("%s\n", buffer);
+    exit(-1);
+  }
+
+  // Create a compute kernel with the program we want to run
+  cl_kernel kernel = clCreateKernel(program, "pow_of_two", &err);
+  cl_error(err, "Failed to create kernel from the program\n");
+
+  // Create and initialize the input and output arrays at the host memory. Taking
+  // into account the kernel definition, the data type of these arrays should be floating point.
+  const size_t VECTOR_SIZE = 1024;
+  float *input = (float*) malloc(sizeof(float) * VECTOR_SIZE);
+  float *output = (float*) malloc(sizeof(float) * VECTOR_SIZE);
   
+  for (int i = 0; i < VECTOR_SIZE; i++) input[i] = (float)i;
+  memset(output, 0, VECTOR_SIZE * sizeof(float));
+
+  // Create the input and output arrays at the device memory. Computing device will
+  // refer to these objects as the source and destination of the power of two calculations,
+  // and they will be referred as arguments of the kernel function at the file kernel.cl.
+  cl_mem in_device_object = clCreateBuffer(context, CL_MEM_READ_ONLY, VECTOR_SIZE * sizeof(float), NULL, &err);
+  cl_error(err, "Failed to create memory buffer at device\n");
+  cl_mem out_device_object = clCreateBuffer(context, CL_MEM_WRITE_ONLY, VECTOR_SIZE * sizeof(float), NULL, &err);
+  cl_error(err, "Failed to create memory buffer at device\n");
+
+  // Copiar los datos del host al dispositivo
+  err = clEnqueueWriteBuffer(command_queue, in_device_object, CL_TRUE, 0, sizeof(float) * VECTOR_SIZE, input, 0, NULL, NULL);
+  cl_error(err, "Failed to enqueue a write command to the device memory\n");
+
+  // Show input values
+  for (int i = 0; i < VECTOR_SIZE; i++){
+    printf("Input: %f\n", input[i]);
+  }
+
+  // Configurar los argumentos del kernel
+  err = clSetKernelArg(kernel, 0, sizeof(cl_mem), &in_device_object);
+  cl_error(err, "Failed to set argument 0\n");
+  err = clSetKernelArg(kernel, 1, sizeof(cl_mem), &out_device_object);
+  cl_error(err, "Failed to set argument 1\n");
+  err = clSetKernelArg(kernel, 2, sizeof(unsigned int), &VECTOR_SIZE);
+  cl_error(err, "Failed to set argument 2\n");
+
+  // Launch Kernel
+  local_size = 128;
+  global_size = VECTOR_SIZE;
+  err = clEnqueueNDRangeKernel(command_queue, kernel, 1, NULL, &global_size, &local_size, 0, NULL, NULL);
+  cl_error(err, "Failed to launch kernel to the device\n");
+
+  // Read data form device memory back to host memory
+  err = clEnqueueReadBuffer(command_queue, out_device_object, CL_TRUE, 0, VECTOR_SIZE * sizeof(float), output, 0, NULL, NULL);
+  cl_error(err, "Failed to enqueue a read command\n");
+
+  // Show output values
+  for (int i = 0; i < VECTOR_SIZE; i++){
+    printf("Output: %f\n", output[i]);
+  }
+
+  // Write code to check the correctness of the execution.
+  for (int i = 0; i < VECTOR_SIZE; i++){
+    if (pow(i, 2) != output[i]){
+      printf("Error: %f != %f\n", pow(2, i), output[i]);
+      exit(-1);
+    }
+  }
+  printf("Correct execution\n");
+
+  // Release all the OpenCL memory objects allocated along this program.
+  clReleaseMemObject(in_device_object);
+  clReleaseMemObject(out_device_object);
+  clReleaseProgram(program);
+  clReleaseKernel(kernel);
+  clReleaseCommandQueue(command_queue);
+  clReleaseContext(context);
+
   return 0;
 }
 
