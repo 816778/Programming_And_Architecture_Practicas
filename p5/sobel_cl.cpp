@@ -5,7 +5,7 @@
 //g++ sobel_cl.cpp -o sobel -lOpenCL -I -lm -lpthread -lX11 -ljpeg
 //  
 ////////////////////////////////////////////////////////////////////
-
+#include <chrono>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -56,9 +56,6 @@ int main(int argc, char** argv)
   char str_buffer[t_buf];       // auxiliary buffer 
   size_t e_buf;             // effective size of str_buffer in use
         
-  size_t global_size;                       // global domain size for our calculation
-  size_t local_size;                        // local domain size for our calculation
-
   const cl_uint num_platforms_ids = 10;             // max of allocatable platforms
   cl_platform_id platforms_ids[num_platforms_ids];      // array of platforms
   cl_uint n_platforms;                      // effective number of platforms in use
@@ -208,7 +205,7 @@ int main(int argc, char** argv)
   CImg <unsigned char> img_gray = img.get_RGBtoYCbCr().get_channel(0);
   img_w = img_gray.width(); img_h = img_gray.height(); img_s = img_gray.spectrum();
   img_gray.display("Original Image");
-
+  fprintf(stderr, "Image size: %d x %d x %d\n", img_w, img_h, img_s);
 
   // Create and initialize the input and output arrays at the host memory. Taking
   // into account the kernel definition, the data type of these arrays should be floating point.
@@ -221,7 +218,7 @@ int main(int argc, char** argv)
   for (int channel = 0; channel < img_s; channel++) {
     for (int j = 0; j < img_h; j++){
       for (int i = 0; i < img_w; i++){
-        input[iter++] = (float)img(i, j, 0, channel);
+        input[iter++] = (float)img_gray(i, j, 0, channel);
       }
     }
   }
@@ -233,9 +230,9 @@ int main(int argc, char** argv)
     {-1, 0, 1}
   };
   float sobel_y[3][3] = {
-    {-1, -2, -1},
+    {1, 2, 1},
     {0, 0, 0},
-    {1, 2, 1}
+    {-1, -2, -1}
   };
 
   // Create the input and output arrays at the device memory. Computing device will
@@ -273,9 +270,10 @@ int main(int argc, char** argv)
   cl_error(err, "Failed to set argument 5\n");
 
   // Launch Kernel
-  local_size = 128;
-  global_size = VECTOR_SIZE;
-  err = clEnqueueNDRangeKernel(command_queue, kernel, 1, NULL, &global_size, &local_size, 0, NULL, NULL);
+  size_t global_size[2] = {img_w, img_h};  // Dimensiones globales para X e Y
+  size_t local_size[2] = {16, 16};      
+
+  err = clEnqueueNDRangeKernel(command_queue, kernel, 2, NULL, global_size, local_size, 0, NULL, NULL);
   cl_error(err, "Failed to launch kernel to the device\n");
 
   // Read data form device memory back to host memory
@@ -283,12 +281,12 @@ int main(int argc, char** argv)
   cl_error(err, "Failed to enqueue a read command\n");
 
   // Volcar los valores de salida es una imagen cimg
-  CImg<unsigned char> output_img(img_w, img_h, 1, img_s);
+  CImg<unsigned char> output_img(img_w, img_h);
   iter = 0;
   for (int channel = 0; channel < img_s; channel++) {
     for (int j = 0; j < img_h; j++){
       for (int i = 0; i < img_w; i++){
-        output_img(i, j, 0, channel) = (unsigned char)output[iter++];
+        output_img(i, j) = (unsigned char)output[iter++];
       }
     }
   }

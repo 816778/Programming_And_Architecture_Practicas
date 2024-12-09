@@ -5,7 +5,6 @@ using namespace cimg_library;
 
 /**
  * g++ source.cpp -o build/executable -I[PATH_TO_CIMG] -lm -lpthread -lX11 -ljpeg
- * g++ source.cpp -o executable -lOpenCL
  */
 
 int main(){

@@ -5,7 +5,6 @@
 //
 // 
 ////////////////////////////////////////////////////////////////////
-#include <time.h>
 
 #include <fcntl.h>
 #include <stdio.h>
@@ -47,7 +46,6 @@ void cl_error(cl_int code, const char *string){
 
 int main(int argc, char** argv)
 {
-  clock_t start_program = clock();
   int err;                              // error code returned from api calls
   size_t t_buf = 50;            // size of str_buffer
   char str_buffer[t_buf];       // auxiliary buffer 
@@ -204,22 +202,13 @@ int main(int argc, char** argv)
   cl_error(err, "Failed to create memory buffer at device\n");
 
   // Copiar los datos del host al dispositivo
-  //////////////////////////////////////////////////////////////
-  // Tiempo de escritura en el buffer
-  //////////////////////////////////////////////////////////////
-  clock_t start_write = clock();
   err = clEnqueueWriteBuffer(command_queue, in_device_object, CL_TRUE, 0, sizeof(float) * VECTOR_SIZE, input, 0, NULL, NULL);
   cl_error(err, "Failed to enqueue a write command to the device memory\n");
-  clock_t end_write = clock();
-  double write_time = (double)(end_write - start_write) / CLOCKS_PER_SEC;
-  double bandwidth_write = (sizeof(float) * VECTOR_SIZE) / (write_time * 1e6); // En MB/s
-  printf("Ancho de banda Host -> Device: %.2f MB/s\n", bandwidth_write);
-
 
   // Show input values
-  /*for (int i = 0; i < VECTOR_SIZE; i++){
+  for (int i = 0; i < VECTOR_SIZE; i++){
     printf("Input: %f\n", input[i]);
-  }*/
+  }
 
   // Configurar los argumentos del kernel
   err = clSetKernelArg(kernel, 0, sizeof(cl_mem), &in_device_object);
@@ -232,38 +221,17 @@ int main(int argc, char** argv)
   // Launch Kernel
   local_size = 128;
   global_size = VECTOR_SIZE;
-  //////////////////////////////////////////////////////////////
-  // Medir el Tiempo de Ejecución del Kernel
-  //////////////////////////////////////////////////////////////
-  cl_event kernel_event;
-  //////////////////////////////////////////////////////////////
-  err = clEnqueueNDRangeKernel(command_queue, kernel, 1, NULL, &global_size, &local_size, 0, NULL, &kernel_event);
+  err = clEnqueueNDRangeKernel(command_queue, kernel, 1, NULL, &global_size, &local_size, 0, NULL, NULL);
   cl_error(err, "Failed to launch kernel to the device\n");
-  //////////////////////////////////////////////////////////////
-  clWaitForEvents(1, &kernel_event);
 
-  cl_ulong start_time, end_time;
-  clGetEventProfilingInfo(kernel_event, CL_PROFILING_COMMAND_START, sizeof(cl_ulong), &start_time, NULL);
-  clGetEventProfilingInfo(kernel_event, CL_PROFILING_COMMAND_END, sizeof(cl_ulong), &end_time, NULL);
-  double kernel_time = (double)(end_time - start_time) * 1e-9; // En segundos
-  printf("Tiempo de ejecución del kernel: %.6f segundos\n", kernel_time);
-
-  //////////////////////////////////////////////////////////////
-  // Tiempo de lectura del buffer
-  //////////////////////////////////////////////////////////////
-  clock_t start_read = clock();
   // Read data form device memory back to host memory
   err = clEnqueueReadBuffer(command_queue, out_device_object, CL_TRUE, 0, VECTOR_SIZE * sizeof(float), output, 0, NULL, NULL);
   cl_error(err, "Failed to enqueue a read command\n");
-  clock_t end_read = clock();
 
-  double read_time = (double)(end_read - start_read) / CLOCKS_PER_SEC;
-  double bandwidth_read = (sizeof(float) * VECTOR_SIZE) / (read_time * 1e6); // En MB/s
-  printf("Ancho de banda Device -> Host: %.2f MB/s\n", bandwidth_read);
   // Show output values
-  /*for (int i = 0; i < VECTOR_SIZE; i++){
+  for (int i = 0; i < VECTOR_SIZE; i++){
     printf("Output: %f\n", output[i]);
-  }*/
+  }
 
   // Write code to check the correctness of the execution.
   for (int i = 0; i < VECTOR_SIZE; i++){
@@ -281,16 +249,6 @@ int main(int argc, char** argv)
   clReleaseKernel(kernel);
   clReleaseCommandQueue(command_queue);
   clReleaseContext(context);
-  clock_t end_program = clock();
-
-  double throughput = VECTOR_SIZE / kernel_time;
-  size_t memory_footprint = 2 * VECTOR_SIZE * sizeof(float);
-  printf("Throughput del kernel: %.2f elementos/segundo\n", throughput);
-  printf("Huella de memoria en OpenCL: %.2f MB\n", memory_footprint / (1024.0 * 1024.0));
-
-  double total_time = (double)(end_program - start_program) / CLOCKS_PER_SEC;
-  printf("Tiempo total del programa: %.6f segundos\n", total_time);
-
 
   return 0;
 }
