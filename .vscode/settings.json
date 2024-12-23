@@ -90,7 +90,8 @@
         "xstring": "cpp",
         "xtr1common": "cpp",
         "xtree": "cpp",
-        "xutility": "cpp"
+        "xutility": "cpp",
+        "filesystem": "cpp"
     },
     "cmake.sourceDirectory": "/home/erika/Descargas/Master/Programming_and_Architecture_of_Computing_Systems/PACS_MASTER/p3"
 }
