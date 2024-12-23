@@ -162,9 +162,9 @@ int main(int argc, char** argv) {
     unsigned iter = 0;
     for (int channel = 0; channel < img_s; channel++) {
         for (int j = 0; j < img_h; j++){
-        for (int i = 0; i < img_w; i++){
-            input[iter++] = (float)img_gray(i, j, 0, channel);
-        }
+            for (int i = 0; i < img_w; i++){
+                input[iter++] = (float)img_gray(i, j, 0, channel);
+            }
         }
     }
 

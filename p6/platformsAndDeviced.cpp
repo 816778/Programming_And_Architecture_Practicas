@@ -1,11 +1,16 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <math.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <dirent.h>
+#include <iostream>
+#include <vector>
+#include <string>
+#include <thread>
+#include <mutex>
 #ifdef __APPLE__
   #include <OpenCL/opencl.h>
 #else
@@ -13,8 +18,9 @@
 #endif
 
 #define cimg_use_jpeg
-#include <iostream>
 #include "CImg.h"
+
+using namespace std;
 using namespace cimg_library;
 
 // ABOUT ERRORS
@@ -28,6 +34,174 @@ using namespace cimg_library;
 // g++ platformsAndDeviced.cpp -o platformsAndDeviced -lOpenCL -I -lm -lpthread -lX11 -ljpeg
 
 
+struct Chunk {
+    int start_x;
+    int start_y;
+    int width;
+    int height;
+    CImg<unsigned char>* image;
+};
+
+enum WriteOption {
+    WRITE_IMAGES,
+    WRITE_CHUNKS
+};
+
+enum ParallelOption {
+    SIMPLE,
+    USE_CHUNKS
+};
+
+
+/**
+ * Auxiliar functions
+ */
+
+void writeOutput(const std::vector<CImg<unsigned char>>& images, const std::vector<std::string>& files, const std::vector<Chunk>& chunks, WriteOption option, bool verbose = true) {
+    if (!verbose){
+        return;
+    }
+
+    if (option == WRITE_IMAGES) {
+        for (size_t i = 0; i < images.size(); i++) {
+            size_t file_index = i % files.size();  // Índice del archivo original
+            std::cout << "Imagen " << i + 1 << ": " << files[file_index] << " (" 
+                      << images[i].width() << "x" << images[i].height() << ")\n";
+        }
+    } else if (option == WRITE_CHUNKS) {
+        for (size_t i = 0; i < chunks.size(); ++i) {
+            const Chunk& chunk = chunks[i];
+            cout << "Chunk " << i + 1 << ": Imagen " << chunk.image
+                 << ", Posición (" << chunk.start_x << ", " << chunk.start_y << ")"
+                 << ", Tamaño (" << chunk.width << "x" << chunk.height << ")\n";
+        }
+    }
+}
+
+/**
+ * Chunck functions
+ */
+std::vector<Chunk> createChunksForImage(CImg<unsigned char>& image, int max_chunk_height) {
+    std::vector<Chunk> chunks;
+    int img_width = image.width();
+    int img_height = image.height();
+
+    for (int start_y = 0; start_y < img_height; start_y += max_chunk_height) {
+        int chunk_height = std::min(max_chunk_height, img_height - start_y);
+        chunks.push_back({0, start_y, img_width, chunk_height, &image});
+    }
+
+    return chunks;
+}
+
+
+std::vector<Chunk> createChunksForAllImages(std::vector<CImg<unsigned char>>& images, int max_chunk_height) {
+    std::vector<Chunk> all_chunks;
+
+    for (auto& image : images) {
+        std::vector<Chunk> chunks = createChunksForImage(image, max_chunk_height);
+        all_chunks.insert(all_chunks.end(), chunks.begin(), chunks.end());
+    }
+
+    return all_chunks;
+}
+
+
+/**
+ * Image funtions
+ */
+std::mutex image_mutex;
+
+
+std::vector<std::string> listFilesInDirectory(const std::string& folder_path) {
+    std::vector<std::string> files;
+    DIR* dir = opendir(folder_path.c_str());
+    if (!dir) {
+        std::cerr << "Error: No se pudo abrir el directorio " << folder_path << std::endl;
+        return files;
+    }
+
+    struct dirent* entry;
+    while ((entry = readdir(dir)) != nullptr) {
+        std::string file_name = entry->d_name;
+
+        // Ignorar entradas especiales "." y ".."
+        if (file_name != "." && file_name != "..") {
+            files.push_back(folder_path + "/" + file_name);  // Ruta completa
+        }
+    }
+    closedir(dir);
+    return files;
+}
+
+// Función para cargar imágenes usando CImg
+std::vector<CImg<unsigned char>> loadImagesFromFiles(const std::vector<std::string>& file_paths, int copys_each_image = 1) {
+    std::vector<CImg<unsigned char>> images;
+    for (const auto& file : file_paths) {
+        try {
+            CImg<unsigned char> img(file.c_str());
+            CImg <unsigned char> img_gray = img.get_RGBtoYCbCr().get_channel(0);
+            // Replicar la imagen
+            for (int i = 0; i < copys_each_image; i++){
+                images.push_back(img_gray);
+            }
+            std::cout << "Imagen cargada: " << file << "\n";
+        } catch (const cimg_library::CImgIOException& e) {
+            std::cerr << "Error al cargar la imagen: " << file << " (" << e.what() << ")\n";
+        }
+    }
+    return images;
+}
+
+
+void loadImageSubset(const vector<string>& file_paths, vector<CImg<unsigned char>>& images, int start, int end, int copys_each_image = 1) {
+    for (int i = start; i < end; ++i) {
+        try {
+            CImg<unsigned char> img(file_paths[i].c_str());
+            CImg <unsigned char> img_gray = img.get_RGBtoYCbCr().get_channel(0);
+            
+            {
+                for (int i = 0; i < copys_each_image; i++){
+                    std::lock_guard<std::mutex> lock(image_mutex);
+                    images.push_back(img_gray);
+                }
+            }
+            
+            // cout << "Imagen cargada: " << file_paths[i] << endl;
+        } catch (const cimg_library::CImgIOException& e) {
+            cerr << "Error al cargar la imagen: " << file_paths[i] << " (" << e.what() << ")" << endl;
+        }
+    }
+}
+
+std::vector <CImg<unsigned char>> loadImagesFromFilesConcurrent(const std::vector<std::string>& file_paths, int copy_each_image = 1) {
+    std::vector <CImg<unsigned char>> images;
+    std::vector <std::thread> threads;
+    int num_threads = std::thread::hardware_concurrency();
+    cout << "Num threads: " << num_threads << endl;
+
+    int images_per_thread = file_paths.size() / num_threads;
+    int remaining_files = file_paths.size() % num_threads;
+
+    for (int i = 0; i < num_threads; ++i) {
+        int start = i * images_per_thread;
+        int end = (i == num_threads - 1) ? (start + images_per_thread + remaining_files) : (start + images_per_thread);
+        //cout << "Thread " << i << " will load images from " << start << " to " << end << endl;
+        threads.emplace_back(loadImageSubset, std::ref(file_paths), std::ref(images), start, end, copy_each_image);
+    }
+
+    for (auto& t : threads) {
+        if (t.joinable()) {
+            t.join();
+        }
+    }
+
+    return images;
+}
+
+/**
+ * OpenCL functions
+ */
 void cl_error(cl_int code, const char *string){
     if (code != CL_SUCCESS){
         printf("%d - %s\n", code, string);
@@ -81,6 +255,7 @@ void scanPlatformsAndDevices(cl_platform_id* platforms_ids, cl_device_id devices
 }
 
 
+
 cl_context createContext(cl_platform_id platform_id, cl_device_id device_id) {
     cl_int err;
     cl_context_properties properties[] = {CL_CONTEXT_PLATFORM, (cl_context_properties)platform_id, 0};
@@ -97,6 +272,129 @@ cl_command_queue createCommandQueue(cl_context context, cl_device_id device_id) 
     return queue;
 }
 
+
+cl_program loadAndBuildProgram(cl_context context, cl_device_id device_id, const char* filename) {
+    cl_int err;
+
+    // Leer archivo fuente
+    FILE* file = fopen(filename, "r");
+    if (!file) {
+        fprintf(stderr, "Error: Failed to open kernel file %s\n", filename);
+        exit(EXIT_FAILURE);
+    }
+    fseek(file, 0, SEEK_END);
+    size_t fileSize = ftell(file);
+    rewind(file);
+
+    char* sourceCode = (char*)malloc(fileSize + 1);
+    fread(sourceCode, sizeof(char), fileSize, file);
+    sourceCode[fileSize] = '\0';
+    fclose(file);
+
+    // Crear y compilar programa
+    cl_program program = clCreateProgramWithSource(context, 1, (const char**)&sourceCode, &fileSize, &err);
+    cl_error(err, "Failed to create program with source");
+    free(sourceCode);
+
+    err = clBuildProgram(program, 1, &device_id, NULL, NULL, NULL);
+    if (err != CL_SUCCESS) {
+        size_t len;
+        char buffer[2048];
+        clGetProgramBuildInfo(program, device_id, CL_PROGRAM_BUILD_LOG, sizeof(buffer), buffer, &len);
+        fprintf(stderr, "Build log: %s\n", buffer);
+        exit(EXIT_FAILURE);
+    }
+    return program;
+}
+
+void processImagesOnGPU(cl_command_queue command_queue, cl_context context, cl_device_id device_id, cl_program program, const std::vector<CImg<unsigned char>>& images) {
+    int err;
+
+    cl_kernel kernel = clCreateKernel(program, "sobel_filter", &err);
+    cl_error(err, "Failed to create kernel from the program\n");
+
+    for (const auto& img : images) {
+        size_t width = img.width();
+        size_t height = img.height();
+        size_t img_s = img.spectrum();
+
+        size_t VECTOR_SIZE = width * height * img_s;
+        float *input = (float*) malloc(sizeof(float) * VECTOR_SIZE);
+        float *output = (float*) malloc(sizeof(float) * VECTOR_SIZE);
+
+        unsigned iter = 0;
+        for (int channel = 0; channel < img_s; channel++) {
+            for (int j = 0; j < height; j++){
+                for (int i = 0; i < width; i++){
+                    input[iter++] = (float)img(i, j, 0, channel);
+                }
+            }
+        }
+        float sobel_x[3][3] = {{-1, 0, 1},{-2, 0, 2},{-1, 0, 1}};
+        float sobel_y[3][3] = {{1, 2, 1},{0, 0, 0},{-1, -2, -1}};
+
+        cl_mem in_device_object = clCreateBuffer(context, CL_MEM_READ_ONLY, VECTOR_SIZE * sizeof(float), NULL, &err);
+        cl_error(err, "Failed to create memory buffer at device\n");
+        cl_mem sobel_x_device_object = clCreateBuffer(context, CL_MEM_READ_ONLY, 3 * 3 * sizeof(float), NULL, &err);
+        cl_error(err, "Failed to create memory buffer at device\n");
+        cl_mem sobel_y_device_object = clCreateBuffer(context, CL_MEM_READ_ONLY, 3 * 3 * sizeof(float), NULL, &err);
+        cl_error(err, "Failed to create memory buffer at device\n");
+        cl_mem out_device_object = clCreateBuffer(context, CL_MEM_WRITE_ONLY, VECTOR_SIZE * sizeof(float), NULL, &err);
+        cl_error(err, "Failed to create memory buffer at device\n");
+
+        err = clEnqueueWriteBuffer(command_queue, in_device_object, CL_TRUE, 0, sizeof(float) * VECTOR_SIZE, input, 0, NULL, NULL);
+        cl_ulong write_start, write_end;
+        cl_error(err, "Failed to enqueue a write command to the device memory\n");
+        err = clEnqueueWriteBuffer(command_queue, sobel_x_device_object, CL_TRUE, 0, 3 * 3 * sizeof(float), sobel_x, 0, NULL, NULL);
+        cl_error(err, "Failed to enqueue a write command to the device memory\n");
+        err = clEnqueueWriteBuffer(command_queue, sobel_y_device_object, CL_TRUE, 0, 3 * 3 * sizeof(float), sobel_y, 0, NULL, NULL);
+        cl_error(err, "Failed to enqueue a write command to the device memory\n");
+
+        // Set the arguments to our compute kernel
+        err = clSetKernelArg(kernel, 0, sizeof(cl_mem), &in_device_object);
+        cl_error(err, "Failed to set argument 0\n");
+        err = clSetKernelArg(kernel, 1, sizeof(cl_mem), &sobel_x_device_object);
+        cl_error(err, "Failed to set argument 1\n");
+        err = clSetKernelArg(kernel, 2, sizeof(cl_mem), &sobel_y_device_object);
+        cl_error(err, "Failed to set argument 2\n");
+        err = clSetKernelArg(kernel, 3, sizeof(cl_mem), &out_device_object);
+        cl_error(err, "Failed to set argument 3\n");
+        err = clSetKernelArg(kernel, 4, sizeof(unsigned int), &width);
+        cl_error(err, "Failed to set argument 4\n");
+        err = clSetKernelArg(kernel, 5, sizeof(unsigned int), &height);
+        cl_error(err, "Failed to set argument 5\n");
+        
+        // Launch Kernel
+        size_t global_size[2] = {width, height}; // 2D global work size
+        size_t local_size[2] = {16, 16};
+
+        err = clEnqueueNDRangeKernel(command_queue, kernel, 2, NULL, global_size, NULL, 0, NULL, NULL);
+        cl_error(err, "Failed to launch kernel to the device\n");
+        // Read data form device memory back to host memory
+        err = clEnqueueReadBuffer(command_queue, out_device_object, CL_TRUE, 0, VECTOR_SIZE * sizeof(float), output, 0, NULL, NULL);
+        cl_error(err, "Failed to enqueue a read command\n");
+
+        // Create a new image with the output data
+        CImg<unsigned char> output_img(width, height);
+        iter = 0;
+        for (int channel = 0; channel < img_s; channel++) {
+            for (int j = 0; j < height; j++){
+                for (int i = 0; i < width; i++){
+                    output_img(i, j) = (unsigned char)output[iter++];
+                }
+            }
+        }
+
+        clReleaseMemObject(in_device_object);
+        clReleaseMemObject(out_device_object);
+        clReleaseProgram(program);
+        // output_img.display("Sobel filter");
+    }
+    clReleaseKernel(kernel);
+    clReleaseCommandQueue(command_queue);
+    clReleaseContext(context);
+}   
+
 int main(int argc, char** argv) {
     // Initialization
     int err;   
@@ -104,12 +402,58 @@ int main(int argc, char** argv) {
     cl_device_id devices_ids[10][10];
     cl_uint n_platforms, n_devices[10];
 
-    bool verbose = true, watch = false;
+    std::string folder_path = "./images";
 
+    bool verbose = true, watch = false, loadThreads = true;
+
+    std::vector<std::string> files = listFilesInDirectory(folder_path);
+    if (files.empty()) {
+        std::cerr << "No se encontraron archivos en el directorio " << folder_path << std::endl;
+        return -1;
+    }
+
+    size_t total_images = 50;
+    size_t num_images = files.size();
+    size_t copy_each_image = total_images / num_images;
+
+    std::vector<CImg<unsigned char>> images = loadThreads ? loadImagesFromFilesConcurrent(files, copy_each_image) : loadImagesFromFiles(files, copy_each_image);
+    writeOutput(images, files, {}, WRITE_IMAGES, false);
+
+
+    ParallelOption paralel_option = SIMPLE;
+    
     // Scan platforms and devices
     scanPlatformsAndDevices(platforms_ids, devices_ids, &n_platforms, n_devices, verbose);
-    cl_context context = createContext(platforms_ids[0], devices_ids[0][0]);
-    cl_command_queue command_queue = createCommandQueue(context, devices_ids[0][0]);
+
+    cl_context context_gpu0 = createContext(platforms_ids[0], devices_ids[0][0]);
+    cl_context context_gpu1 = createContext(platforms_ids[0], devices_ids[0][1]);
+
+    cl_command_queue queue_gpu0 = createCommandQueue(context_gpu0, devices_ids[0][0]);
+    cl_command_queue queue_gpu1 = createCommandQueue(context_gpu1, devices_ids[0][1]);
+
+    cl_program program_gpu0 = loadAndBuildProgram(context_gpu0, devices_ids[0][0], "kernel.cl");
+    cl_program program_gpu1 = loadAndBuildProgram(context_gpu1, devices_ids[0][1], "kernel.cl");
+
+
+    if (paralel_option == SIMPLE){
+        size_t mid = images.size() / 2;
+        std::vector<CImg<unsigned char>> images_gpu0(images.begin(), images.begin() + mid);
+        std::vector<CImg<unsigned char>> images_gpu1(images.begin() + mid, images.end());
+
+        std::thread gpu0_thread(processImagesOnGPU, queue_gpu0, context_gpu0, devices_ids[0][0], program_gpu0, std::ref(images_gpu0));
+        std::thread gpu1_thread(processImagesOnGPU, queue_gpu1, context_gpu1, devices_ids[0][1], program_gpu1, std::ref(images_gpu1));
+
+        gpu0_thread.join();
+        gpu1_thread.join();
+
+    } else if (paralel_option == USE_CHUNKS){
+        const int max_chunk_height = 128;
+        std::vector<Chunk> chunks = createChunksForAllImages(images, max_chunk_height);
+        writeOutput(images, files, chunks, WRITE_CHUNKS, false);
+    }
+    
+    
+    
 
 
     return 0;
