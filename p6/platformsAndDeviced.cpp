@@ -11,6 +11,7 @@
 #include <string>
 #include <thread>
 #include <mutex>
+#include <chrono>
 #ifdef __APPLE__
   #include <OpenCL/opencl.h>
 #else
@@ -48,6 +49,7 @@ enum WriteOption {
 };
 
 enum ParallelOption {
+    ONE_DEVICE,
     SIMPLE,
     USE_CHUNKS
 };
@@ -308,6 +310,8 @@ cl_program loadAndBuildProgram(cl_context context, cl_device_id device_id, const
 }
 
 void processImagesOnGPU(cl_command_queue command_queue, cl_context context, cl_device_id device_id, cl_program program, const std::vector<CImg<unsigned char>>& images) {
+    auto start_chrono = std::chrono::high_resolution_clock::now();
+
     int err;
 
     cl_kernel kernel = clCreateKernel(program, "sobel_filter", &err);
@@ -330,14 +334,7 @@ void processImagesOnGPU(cl_command_queue command_queue, cl_context context, cl_d
                 }
             }
         }
-        float sobel_x[3][3] = {{-1, 0, 1},{-2, 0, 2},{-1, 0, 1}};
-        float sobel_y[3][3] = {{1, 2, 1},{0, 0, 0},{-1, -2, -1}};
-
         cl_mem in_device_object = clCreateBuffer(context, CL_MEM_READ_ONLY, VECTOR_SIZE * sizeof(float), NULL, &err);
-        cl_error(err, "Failed to create memory buffer at device\n");
-        cl_mem sobel_x_device_object = clCreateBuffer(context, CL_MEM_READ_ONLY, 3 * 3 * sizeof(float), NULL, &err);
-        cl_error(err, "Failed to create memory buffer at device\n");
-        cl_mem sobel_y_device_object = clCreateBuffer(context, CL_MEM_READ_ONLY, 3 * 3 * sizeof(float), NULL, &err);
         cl_error(err, "Failed to create memory buffer at device\n");
         cl_mem out_device_object = clCreateBuffer(context, CL_MEM_WRITE_ONLY, VECTOR_SIZE * sizeof(float), NULL, &err);
         cl_error(err, "Failed to create memory buffer at device\n");
@@ -345,28 +342,25 @@ void processImagesOnGPU(cl_command_queue command_queue, cl_context context, cl_d
         err = clEnqueueWriteBuffer(command_queue, in_device_object, CL_TRUE, 0, sizeof(float) * VECTOR_SIZE, input, 0, NULL, NULL);
         cl_ulong write_start, write_end;
         cl_error(err, "Failed to enqueue a write command to the device memory\n");
-        err = clEnqueueWriteBuffer(command_queue, sobel_x_device_object, CL_TRUE, 0, 3 * 3 * sizeof(float), sobel_x, 0, NULL, NULL);
-        cl_error(err, "Failed to enqueue a write command to the device memory\n");
-        err = clEnqueueWriteBuffer(command_queue, sobel_y_device_object, CL_TRUE, 0, 3 * 3 * sizeof(float), sobel_y, 0, NULL, NULL);
-        cl_error(err, "Failed to enqueue a write command to the device memory\n");
-
+    
         // Set the arguments to our compute kernel
         err = clSetKernelArg(kernel, 0, sizeof(cl_mem), &in_device_object);
         cl_error(err, "Failed to set argument 0\n");
-        err = clSetKernelArg(kernel, 1, sizeof(cl_mem), &sobel_x_device_object);
-        cl_error(err, "Failed to set argument 1\n");
-        err = clSetKernelArg(kernel, 2, sizeof(cl_mem), &sobel_y_device_object);
-        cl_error(err, "Failed to set argument 2\n");
-        err = clSetKernelArg(kernel, 3, sizeof(cl_mem), &out_device_object);
+        err = clSetKernelArg(kernel, 1, sizeof(cl_mem), &out_device_object);
         cl_error(err, "Failed to set argument 3\n");
-        err = clSetKernelArg(kernel, 4, sizeof(unsigned int), &width);
-        cl_error(err, "Failed to set argument 4\n");
-        err = clSetKernelArg(kernel, 5, sizeof(unsigned int), &height);
-        cl_error(err, "Failed to set argument 5\n");
+
+        size_t local_size[2] = {16, 16};
+        size_t local_mem_size = (local_size[0] + 2) * (local_size[1] + 2) * sizeof(float);
+        
+        // err = clSetKernelArg(kernel, 4, local_width * local_height * sizeof(float), NULL);
+        // cl_error(err, "Failed to set local memory argument");
+        err = clSetKernelArg(kernel, 2, sizeof(unsigned int), &width);
+        cl_error(err, "Failed to set argument 2\n");
+        err = clSetKernelArg(kernel, 3, sizeof(unsigned int), &height);
+        cl_error(err, "Failed to set argument 3\n");
         
         // Launch Kernel
         size_t global_size[2] = {width, height}; // 2D global work size
-        size_t local_size[2] = {16, 16};
 
         err = clEnqueueNDRangeKernel(command_queue, kernel, 2, NULL, global_size, NULL, 0, NULL, NULL);
         cl_error(err, "Failed to launch kernel to the device\n");
@@ -393,6 +387,11 @@ void processImagesOnGPU(cl_command_queue command_queue, cl_context context, cl_d
     clReleaseKernel(kernel);
     clReleaseCommandQueue(command_queue);
     clReleaseContext(context);
+
+    auto end_chrono = std::chrono::high_resolution_clock::now(); // Finaliza el temporizador
+    std::chrono::duration<double, std::milli> elapsed = end_chrono - start_chrono; 
+
+    std::cout << "Total processing time on GPU: " << elapsed.count() << " ms" << std::endl;
 }   
 
 int main(int argc, char** argv) {
@@ -412,7 +411,7 @@ int main(int argc, char** argv) {
         return -1;
     }
 
-    size_t total_images = 50;
+    size_t total_images = 5000;
     size_t num_images = files.size();
     size_t copy_each_image = total_images / num_images;
 
@@ -446,10 +445,15 @@ int main(int argc, char** argv) {
         gpu0_thread.join();
         gpu1_thread.join();
 
-    } else if (paralel_option == USE_CHUNKS){
+    } 
+    else if (paralel_option == USE_CHUNKS){
         const int max_chunk_height = 128;
         std::vector<Chunk> chunks = createChunksForAllImages(images, max_chunk_height);
         writeOutput(images, files, chunks, WRITE_CHUNKS, false);
+    } 
+    else if(paralel_option == ONE_DEVICE){
+        std::thread gpu0_thread(processImagesOnGPU, queue_gpu0, context_gpu0, devices_ids[0][0], program_gpu0, std::ref(images));
+        gpu0_thread.join();
     }
     
     

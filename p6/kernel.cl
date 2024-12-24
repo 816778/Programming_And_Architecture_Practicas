@@ -14,12 +14,22 @@ __kernel void pow_of_two (
 
 __kernel void sobel_filter(
     __global const float* input,    // Input image
-    __global const float* sobel_x,  // Sobel x filter
-    __global const float* sobel_y,  // Sobel y filter
     __global float* output,         // Output image
     const unsigned int width,       // Image width
     const unsigned int height)      // Image height
 {
+
+    const float sobel_x[3][3] = {
+        {-1.0f, 0.0f, 1.0f},
+        {-2.0f, 0.0f, 2.0f},
+        {-1.0f, 0.0f, 1.0f}
+    };
+    const float sobel_y[3][3] = {
+        { 1.0f,  2.0f,  1.0f},
+        { 0.0f,  0.0f,  0.0f},
+        {-1.0f, -2.0f, -1.0f}
+    };
+
     int x = get_global_id(0);
     int y = get_global_id(1);
 
@@ -37,8 +47,8 @@ __kernel void sobel_filter(
             // Verify borders
             if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
                 float pixel = input[ny * width + nx];
-                gx += pixel * sobel_x[(i + 1) * 3 + (j + 1)];
-                gy += pixel * sobel_y[(i + 1) * 3 + (j + 1)];
+                gx += pixel * sobel_x[i + 1][j + 1];
+                gy += pixel * sobel_y[i + 1][j + 1];
             }
         }
     }
@@ -47,3 +57,6 @@ __kernel void sobel_filter(
     float magnitude = sqrt(gx * gx + gy * gy);
     output[y * width + x] = magnitude;
 }
+
+
+
