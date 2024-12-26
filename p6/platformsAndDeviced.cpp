@@ -51,6 +51,7 @@ enum WriteOption {
 enum ParallelOption {
     ONE_DEVICE,
     SIMPLE,
+    SIMPLE_BALANCED,
     USE_CHUNKS
 };
 
@@ -201,6 +202,41 @@ std::vector <CImg<unsigned char>> loadImagesFromFilesConcurrent(const std::vecto
     return images;
 }
 
+
+size_t calculate_load(const std::vector<CImg<unsigned char>>& images) {
+    size_t total_load = 0;
+    for (const auto& img : images) {
+        total_load += img.width() * img.height(); // Carga basada en el área de la imagen
+    }
+    return total_load;
+}
+
+// Función para dividir imágenes equilibradamente entre dos GPUs
+void balance_images(const std::vector<CImg<unsigned char>>& images,
+                    std::vector<CImg<unsigned char>>& images_gpu0,
+                    std::vector<CImg<unsigned char>>& images_gpu1) {
+    images_gpu0.clear();
+    images_gpu1.clear();
+
+    size_t load_gpu0 = 0, load_gpu1 = 0;
+
+    for (const auto& img : images) {
+        size_t img_load = img.width() * img.height();
+
+        // Asignar la imagen a la GPU con menor carga acumulada
+        if (load_gpu0 <= load_gpu1) {
+            images_gpu0.push_back(img);
+            load_gpu0 += img_load;
+        } else {
+            images_gpu1.push_back(img);
+            load_gpu1 += img_load;
+        }
+    }
+}
+
+
+
+
 /**
  * OpenCL functions
  */
@@ -309,7 +345,7 @@ cl_program loadAndBuildProgram(cl_context context, cl_device_id device_id, const
     return program;
 }
 
-void processImagesOnGPU(cl_command_queue command_queue, cl_context context, cl_device_id device_id, cl_program program, const std::vector<CImg<unsigned char>>& images) {
+void processImagesOnGPU(cl_command_queue command_queue, cl_context context, cl_device_id device_id, cl_program program, const std::vector<CImg<unsigned char>>& images, int gpu_id) {
     auto start_chrono = std::chrono::high_resolution_clock::now();
 
     int err;
@@ -317,7 +353,11 @@ void processImagesOnGPU(cl_command_queue command_queue, cl_context context, cl_d
     cl_kernel kernel = clCreateKernel(program, "sobel_filter", &err);
     cl_error(err, "Failed to create kernel from the program\n");
 
-    for (const auto& img : images) {
+    bool first_image_saved = false;
+    size_t img_index = 0;
+
+    for (size_t img_index = 0; img_index < images.size(); ++img_index) {
+        const auto& img = images[img_index];
         size_t width = img.width();
         size_t height = img.height();
         size_t img_s = img.spectrum();
@@ -361,8 +401,10 @@ void processImagesOnGPU(cl_command_queue command_queue, cl_context context, cl_d
         
         // Launch Kernel
         size_t global_size[2] = {width, height}; // 2D global work size
-
-        err = clEnqueueNDRangeKernel(command_queue, kernel, 2, NULL, global_size, NULL, 0, NULL, NULL);
+        global_size[0] = ((width + local_size[0] - 1) / local_size[0]) * local_size[0];
+        global_size[1] = ((height + local_size[1] - 1) / local_size[1]) * local_size[1];
+        printf("Global size: %d %d\n", global_size[0], global_size[1]);
+        err = clEnqueueNDRangeKernel(command_queue, kernel, 2, NULL, global_size, local_size, 0, NULL, NULL);
         cl_error(err, "Failed to launch kernel to the device\n");
         // Read data form device memory back to host memory
         err = clEnqueueReadBuffer(command_queue, out_device_object, CL_TRUE, 0, VECTOR_SIZE * sizeof(float), output, 0, NULL, NULL);
@@ -379,10 +421,17 @@ void processImagesOnGPU(cl_command_queue command_queue, cl_context context, cl_d
             }
         }
 
+        if (!first_image_saved) {
+            std::string filename = "results/images/output_gpu" + std::to_string(gpu_id) + "_img" + std::to_string(img_index) + ".png";
+            output_img.save_png(filename.c_str());
+            std::cout << "Image saved: " << filename << std::endl;
+            first_image_saved = true; // Marcar como guardada
+        }
+
         clReleaseMemObject(in_device_object);
         clReleaseMemObject(out_device_object);
         clReleaseProgram(program);
-        // output_img.display("Sobel filter");
+        output_img.display("Sobel filter");
     }
     clReleaseKernel(kernel);
     clReleaseCommandQueue(command_queue);
@@ -411,7 +460,7 @@ int main(int argc, char** argv) {
         return -1;
     }
 
-    size_t total_images = 5000;
+    size_t total_images = 15;
     size_t num_images = files.size();
     size_t copy_each_image = total_images / num_images;
 
@@ -433,14 +482,18 @@ int main(int argc, char** argv) {
     cl_program program_gpu0 = loadAndBuildProgram(context_gpu0, devices_ids[0][0], "kernel.cl");
     cl_program program_gpu1 = loadAndBuildProgram(context_gpu1, devices_ids[0][1], "kernel.cl");
 
+    auto start_chrono = std::chrono::high_resolution_clock::now();
 
     if (paralel_option == SIMPLE){
         size_t mid = images.size() / 2;
         std::vector<CImg<unsigned char>> images_gpu0(images.begin(), images.begin() + mid);
         std::vector<CImg<unsigned char>> images_gpu1(images.begin() + mid, images.end());
 
-        std::thread gpu0_thread(processImagesOnGPU, queue_gpu0, context_gpu0, devices_ids[0][0], program_gpu0, std::ref(images_gpu0));
-        std::thread gpu1_thread(processImagesOnGPU, queue_gpu1, context_gpu1, devices_ids[0][1], program_gpu1, std::ref(images_gpu1));
+        std::thread gpu0_thread(processImagesOnGPU, queue_gpu0, context_gpu0, devices_ids[0][0], program_gpu0, std::ref(images_gpu0), 0);
+        std::thread gpu1_thread(processImagesOnGPU, queue_gpu1, context_gpu1, devices_ids[0][1], program_gpu1, std::ref(images_gpu1), 1);
+
+        std::cout << "GPU 0 Load: " << calculate_load(images_gpu0) << std::endl;
+        std::cout << "GPU 1 Load: " << calculate_load(images_gpu1) << std::endl;
 
         gpu0_thread.join();
         gpu1_thread.join();
@@ -452,13 +505,25 @@ int main(int argc, char** argv) {
         writeOutput(images, files, chunks, WRITE_CHUNKS, false);
     } 
     else if(paralel_option == ONE_DEVICE){
-        std::thread gpu0_thread(processImagesOnGPU, queue_gpu0, context_gpu0, devices_ids[0][0], program_gpu0, std::ref(images));
+        std::thread gpu0_thread(processImagesOnGPU, queue_gpu0, context_gpu0, devices_ids[0][0], program_gpu0, std::ref(images), 10);
         gpu0_thread.join();
     }
-    
-    
-    
+    else if(paralel_option == SIMPLE_BALANCED){
+        std::vector<CImg<unsigned char>> images_gpu0, images_gpu1;
+        balance_images(images, images_gpu0, images_gpu1);
 
+        std::thread gpu0_thread(processImagesOnGPU, queue_gpu0, context_gpu0, devices_ids[0][0], program_gpu0, std::ref(images_gpu0), 20);
+        std::thread gpu1_thread(processImagesOnGPU, queue_gpu1, context_gpu1, devices_ids[0][1], program_gpu1, std::ref(images_gpu1), 21);
+
+        std::cout << "GPU 0 Load: " << calculate_load(images_gpu0) << std::endl;
+        std::cout << "GPU 1 Load: " << calculate_load(images_gpu1) << std::endl;
+
+        gpu0_thread.join();
+        gpu1_thread.join();
+    }
+    auto end_chrono = std::chrono::high_resolution_clock::now(); // Finaliza el temporizador
+    std::chrono::duration<double, std::milli> elapsed = end_chrono - start_chrono;
+    std::cout << "Total processing time: " << elapsed.count() << " ms" << std::endl;
 
     return 0;
 }
