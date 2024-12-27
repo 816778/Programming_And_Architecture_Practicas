@@ -353,8 +353,10 @@ void processImagesOnGPU(cl_command_queue command_queue, cl_context context, cl_d
     cl_kernel kernel = clCreateKernel(program, "sobel_filter", &err);
     cl_error(err, "Failed to create kernel from the program\n");
 
+    double total_write_time = 0.0;
+    double total_kernel_time = 0.0;
+    double total_read_time = 0.0;
     bool first_image_saved = false;
-    size_t img_index = 0;
 
     for (size_t img_index = 0; img_index < images.size(); ++img_index) {
         const auto& img = images[img_index];
@@ -379,36 +381,71 @@ void processImagesOnGPU(cl_command_queue command_queue, cl_context context, cl_d
         cl_mem out_device_object = clCreateBuffer(context, CL_MEM_WRITE_ONLY, VECTOR_SIZE * sizeof(float), NULL, &err);
         cl_error(err, "Failed to create memory buffer at device\n");
 
-        err = clEnqueueWriteBuffer(command_queue, in_device_object, CL_TRUE, 0, sizeof(float) * VECTOR_SIZE, input, 0, NULL, NULL);
+        cl_event write_event;
         cl_ulong write_start, write_end;
+        auto write_start_time = std::chrono::high_resolution_clock::now();
+        err = clEnqueueWriteBuffer(command_queue, in_device_object, CL_TRUE, 0, sizeof(float) * VECTOR_SIZE, input, 0, NULL, &write_event);
         cl_error(err, "Failed to enqueue a write command to the device memory\n");
-    
+
+        // Esperar a que la transferencia termine y medir el tiempo
+        err = clWaitForEvents(1, &write_event);
+        cl_error(err, "Failed to wait for events\n");
+        err = clGetEventProfilingInfo(write_event, CL_PROFILING_COMMAND_START, sizeof(write_start), &write_start, NULL);
+        cl_error(err, "Failed to get write start time\n");
+        err = clGetEventProfilingInfo(write_event, CL_PROFILING_COMMAND_END, sizeof(write_end), &write_end, NULL);
+        cl_error(err, "Failed to get write end time\n");
+        std::chrono::duration<double> write_duration = std::chrono::nanoseconds(write_end - write_start);
+        total_write_time += write_duration.count();
+
+
         // Set the arguments to our compute kernel
         err = clSetKernelArg(kernel, 0, sizeof(cl_mem), &in_device_object);
         cl_error(err, "Failed to set argument 0\n");
         err = clSetKernelArg(kernel, 1, sizeof(cl_mem), &out_device_object);
         cl_error(err, "Failed to set argument 3\n");
-
-        size_t local_size[2] = {16, 16};
-        size_t local_mem_size = (local_size[0] + 2) * (local_size[1] + 2) * sizeof(float);
-        
-        // err = clSetKernelArg(kernel, 4, local_width * local_height * sizeof(float), NULL);
-        // cl_error(err, "Failed to set local memory argument");
         err = clSetKernelArg(kernel, 2, sizeof(unsigned int), &width);
         cl_error(err, "Failed to set argument 2\n");
         err = clSetKernelArg(kernel, 3, sizeof(unsigned int), &height);
         cl_error(err, "Failed to set argument 3\n");
         
         // Launch Kernel
-        size_t global_size[2] = {width, height}; // 2D global work size
+        cl_event kernel_event;
+        auto kernel_start_time = std::chrono::high_resolution_clock::now();
+        size_t local_size[2] = {16, 16};
+        size_t global_size[2] = {width, height};
         global_size[0] = ((width + local_size[0] - 1) / local_size[0]) * local_size[0];
         global_size[1] = ((height + local_size[1] - 1) / local_size[1]) * local_size[1];
-        printf("Global size: %d %d\n", global_size[0], global_size[1]);
-        err = clEnqueueNDRangeKernel(command_queue, kernel, 2, NULL, global_size, local_size, 0, NULL, NULL);
+        err = clEnqueueNDRangeKernel(command_queue, kernel, 2, NULL, global_size, local_size, 0, NULL, &kernel_event);
         cl_error(err, "Failed to launch kernel to the device\n");
+
+        // Esperar a que el kernel termine y medir el tiempo
+        err = clWaitForEvents(1, &kernel_event);
+        cl_error(err, "Failed to wait for kernel event\n");
+        cl_ulong kernel_start, kernel_end;
+        err = clGetEventProfilingInfo(kernel_event, CL_PROFILING_COMMAND_START, sizeof(kernel_start), &kernel_start, NULL);
+        cl_error(err, "Failed to get kernel start time\n");
+        err = clGetEventProfilingInfo(kernel_event, CL_PROFILING_COMMAND_END, sizeof(kernel_end), &kernel_end, NULL);
+        cl_error(err, "Failed to get kernel end time\n");
+        std::chrono::duration<double> kernel_duration = std::chrono::nanoseconds(kernel_end - kernel_start);
+        total_kernel_time += kernel_duration.count();
+
+
         // Read data form device memory back to host memory
-        err = clEnqueueReadBuffer(command_queue, out_device_object, CL_TRUE, 0, VECTOR_SIZE * sizeof(float), output, 0, NULL, NULL);
+        cl_event read_event;
+        cl_ulong read_start, read_end;
+        auto read_start_time = std::chrono::high_resolution_clock::now();
+        err = clEnqueueReadBuffer(command_queue, out_device_object, CL_TRUE, 0, VECTOR_SIZE * sizeof(float), output, 0, NULL, &read_event);
         cl_error(err, "Failed to enqueue a read command\n");
+
+        // Esperar a que la lectura termine y medir el tiempo
+        err = clWaitForEvents(1, &read_event);
+        cl_error(err, "Failed to wait for read event\n");
+        err = clGetEventProfilingInfo(read_event, CL_PROFILING_COMMAND_START, sizeof(read_start), &read_start, NULL);
+        cl_error(err, "Failed to get read start time\n");
+        err = clGetEventProfilingInfo(read_event, CL_PROFILING_COMMAND_END, sizeof(read_end), &read_end, NULL);
+        cl_error(err, "Failed to get read end time\n");
+        std::chrono::duration<double> read_duration = std::chrono::nanoseconds(read_end - read_start);
+        total_read_time += read_duration.count();
 
         // Create a new image with the output data
         CImg<unsigned char> output_img(width, height);
@@ -431,16 +468,30 @@ void processImagesOnGPU(cl_command_queue command_queue, cl_context context, cl_d
         clReleaseMemObject(in_device_object);
         clReleaseMemObject(out_device_object);
         clReleaseProgram(program);
-        output_img.display("Sobel filter");
+        //output_img.display("Sobel filter");
     }
     clReleaseKernel(kernel);
     clReleaseCommandQueue(command_queue);
     clReleaseContext(context);
 
     auto end_chrono = std::chrono::high_resolution_clock::now(); // Finaliza el temporizador
+    
+    std::cout << "Total transfer time to GPU_" << gpu_id << ": " << total_write_time * 1e3 << " ms" << std::endl;
+    std::cout << "Total kernel execution time GPU_" << gpu_id << ": "  << total_kernel_time * 1e3 << " ms" << std::endl;
+    std::cout << "Total transfer time from GPU_" << gpu_id << ": "  << total_read_time * 1e3 << " ms" << std::endl;
+
+    double total_time_gpu = total_write_time + total_kernel_time + total_read_time;
+    std::cout << "GPU_" << gpu_id << " - Write: " << (total_write_time / total_time_gpu) * 100.0 << "%\n";
+    std::cout << "GPU_" << gpu_id << " - Kernel: " << (total_kernel_time / total_time_gpu) * 100.0 << "%\n";
+    std::cout << "GPU_" << gpu_id << " - Read: " << (total_read_time / total_time_gpu) * 100.0 << "%\n";
+
+    std::cout << "GPU_" << gpu_id << " Average Write Time: " << (total_write_time / images.size()) * 1e3 << " ms per image\n";
+    std::cout << "GPU_" << gpu_id << " Average Kernel Time: " << (total_kernel_time / images.size()) * 1e3 << " ms per image\n";
+    std::cout << "GPU_" << gpu_id << " Average Read Time: " << (total_read_time / images.size()) * 1e3 << " ms per image\n";
+
     std::chrono::duration<double, std::milli> elapsed = end_chrono - start_chrono; 
 
-    std::cout << "Total processing time on GPU: " << elapsed.count() << " ms" << std::endl;
+    std::cout << "Total processing time on GPU_" << gpu_id << ": "  << elapsed.count() << " ms" << std::endl;
 }   
 
 int main(int argc, char** argv) {
@@ -460,7 +511,7 @@ int main(int argc, char** argv) {
         return -1;
     }
 
-    size_t total_images = 15;
+    size_t total_images = 5000;
     size_t num_images = files.size();
     size_t copy_each_image = total_images / num_images;
 
@@ -468,7 +519,7 @@ int main(int argc, char** argv) {
     writeOutput(images, files, {}, WRITE_IMAGES, false);
 
 
-    ParallelOption paralel_option = SIMPLE;
+    ParallelOption paralel_option = ONE_DEVICE;
     
     // Scan platforms and devices
     scanPlatformsAndDevices(platforms_ids, devices_ids, &n_platforms, n_devices, verbose);
@@ -492,11 +543,20 @@ int main(int argc, char** argv) {
         std::thread gpu0_thread(processImagesOnGPU, queue_gpu0, context_gpu0, devices_ids[0][0], program_gpu0, std::ref(images_gpu0), 0);
         std::thread gpu1_thread(processImagesOnGPU, queue_gpu1, context_gpu1, devices_ids[0][1], program_gpu1, std::ref(images_gpu1), 1);
 
-        std::cout << "GPU 0 Load: " << calculate_load(images_gpu0) << std::endl;
-        std::cout << "GPU 1 Load: " << calculate_load(images_gpu1) << std::endl;
-
         gpu0_thread.join();
         gpu1_thread.join();
+
+        double load_gpu0 = calculate_load(images_gpu0); // Implementa una función basada en total processing time
+        double load_gpu1 = calculate_load(images_gpu1);
+
+        std::cout << "GPU 0 Load: " << load_gpu0 << std::endl;
+        std::cout << "GPU 1 Load: " << load_gpu1 << std::endl;
+
+        std::cout << "GPU_0 processes " << images_gpu0.size() << " images.\n";
+        std::cout << "GPU_1 processes " << images_gpu1.size() << " images.\n";
+
+        double imbalance = std::abs(load_gpu0 - load_gpu1) / std::max(load_gpu0, load_gpu1) * 100.0;
+        std::cout << "Workload imbalance: " << imbalance << "%\n";
 
     } 
     else if (paralel_option == USE_CHUNKS){
