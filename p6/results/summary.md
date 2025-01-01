@@ -11,92 +11,73 @@
 
 # ONE DEVICE
 ## GPU 0
-GPU_10 Total time: 17345.8 ms
-GPU_10 Total data processed: 24701.8 MB
-GPU_10 Average Write Time: 0.495215 ms
-GPU_10 Average Kernel Time: 0.0281488 ms
-GPU_10 Average Read Time: 0.474223 ms
-GPU_10 Global Write Bandwidth: 9988.16 MB/s
-GPU_10 Global Read Bandwidth: 10430.3 MB/s
-Total processing time: 17744.7 ms
+GPU_0 Total time: 18058.6 ms
+GPU_0 Total data processed: 25822.1 MB
+GPU_0 Average Write Time: 0.514884 ms
+GPU_0 Average Kernel Time: 0.0292657 ms
+GPU_0 Average Read Time: 0.519207 ms
+GPU_0 Global Write Bandwidth: 10040.3 MB/s
+GPU_0 Global Read Bandwidth: 9956.72 MB/s
+Total processing time: 18187.6 ms
 ## GPU 1
-GPU_11 Total time: 15882.3 ms
-GPU_11 Total data processed: 24701.8 MB
-GPU_11 Average Write Time: 0.313095 ms
-GPU_11 Average Kernel Time: 0.0279951 ms
-GPU_11 Average Read Time: 0.321766 ms
-GPU_11 Global Write Bandwidth: 15798 MB/s
-GPU_11 Global Read Bandwidth: 15372.3 MB/s
-Total processing time: 16065 ms
+GPU_1 Total time: 14263.6 ms
+GPU_1 Total data processed: 25822.1 MB
+GPU_1 Average Write Time: 0.286418 ms
+GPU_1 Average Kernel Time: 0.0292024 ms
+GPU_1 Average Read Time: 0.368079 ms
+GPU_1 Global Write Bandwidth: 18049.1 MB/s
+GPU_1 Global Read Bandwidth: 14044.8 MB/s
+Total processing time: 14408.2 ms
 
 
 
 # TWO DEVICES
+## GPU 1
+GPU_11 Total time: 8292.32 ms
+GPU_11 Total data processed: 13005.1 MB
+GPU_11 Average Write Time: 0.349702 ms
+GPU_11 Average Kernel Time: 0.0293741 ms
+GPU_11 Average Read Time: 0.393624 ms
+GPU_11 Global Write Bandwidth: 14887.5 MB/s
+GPU_11 Global Read Bandwidth: 13226.3 MB/s
 ## GPU 0
-GPU_0 Total time: 7947.96 ms
-GPU_0 Total data processed: 10908.9 MB
-GPU_0 Average Write Time: 0.441557 ms
-GPU_0 Average Kernel Time: 0.0250403 ms
-GPU_0 Average Read Time: 0.434491 ms
-GPU_0 Global Write Bandwidth: 9894.04 MB/s
-GPU_0 Global Read Bandwidth: 10054.9 MB/s
-## GPU 1 
-GPU_1 Total time: 8792.23 ms
-GPU_1 Total data processed: 13792.9 MB
-GPU_1 Average Write Time: 0.362051 ms
-GPU_1 Average Kernel Time: 0.0309872 ms
-GPU_1 Average Read Time: 0.361635 ms
-GPU_1 Global Write Bandwidth: 15256.9 MB/s
-GPU_1 Global Read Bandwidth: 15274.5 MB/s
+GPU_10 Total time: 9248.43 ms
+GPU_10 Total data processed: 12817.1 MB
+GPU_10 Average Write Time: 0.519462 ms
+GPU_10 Average Kernel Time: 0.028937 ms
+GPU_10 Average Read Time: 0.54761 ms
+GPU_10 Global Write Bandwidth: 9881.37 MB/s
+GPU_10 Global Read Bandwidth: 9373.44 MB/s
 ## TOTAL
-GPU 0 Load: 2.85969e+09
-GPU 1 Load: 3.61573e+09
+GPU 0 Load: 3.35992e+09
+GPU 1 Load: 3.4092e+09
 GPU_0 processes 2497 images.
-GPU_1 processes 2497 images.
-Workload imbalance: 20.9097%
-Total processing time: 10564.3 ms
+GPU_1 processes 2498 images.
+Workload imbalance: 1.44539%
+Total processing time: 10230.9 ms
 
-
-# TWO DEVICED BALANCED
-GPU 0 Load: 3237710080
-GPU 1 Load: 3237710080
-## GPU 1 
-GPU_21 Total time: 7828.27 ms
-GPU_21 Total data processed: 12350.9 MB
-GPU_21 Average Write Time: 0.308644 ms
-GPU_21 Average Kernel Time: 0.028041 ms
-GPU_21 Average Read Time: 0.323751 ms
-GPU_21 Global Write Bandwidth: 16025.9 MB/s
-GPU_21 Global Read Bandwidth: 15278.1 MB/s
-## GPU 0
-GPU_20 Total time: 8615.92 ms
-GPU_20 Total data processed: 12350.9 MB
-GPU_20 Average Write Time: 0.49151 ms
-GPU_20 Average Kernel Time: 0.028067 ms
-GPU_20 Average Read Time: 0.477536 ms
-GPU_20 Global Write Bandwidth: 10063.5 MB/s
-GPU_20 Global Read Bandwidth: 10357.9 MB/s
-## TOTAL
-Total processing time: 11314.2 ms
 
 # TWO DEVICED BALANCED BANDWIDTH
 ## GPU 0
-GPU_20 Total time: 8253.46 ms
-GPU_20 Total data processed: 11149.8 MB
-GPU_20 Average Write Time: 0.45158 ms
-GPU_20 Average Kernel Time: 0.0251552 ms
-GPU_20 Average Read Time: 0.433324 ms
-GPU_20 Global Write Bandwidth: 9694 MB/s
-GPU_20 Global Read Bandwidth: 10102.4 MB/s
-## GPU 0
-GPU_21 Total time: 8690.36 ms
-GPU_21 Total data processed: 13552 MB
-GPU_21 Average Write Time: 0.357435 ms
-GPU_21 Average Kernel Time: 0.0310678 ms
-GPU_21 Average Read Time: 0.354854 ms
-GPU_21 Global Write Bandwidth: 15494.3 MB/s
-GPU_21 Global Read Bandwidth: 15607 MB/s
+GPU_20 Total time: 8621.76 ms
+GPU_20 Total data processed: 12053 MB
+GPU_20 Average Write Time: 0.510087 ms
+GPU_20 Average Kernel Time: 0.0290538 ms
+GPU_20 Average Read Time: 0.54731 ms
+GPU_20 Global Write Bandwidth: 10072.2 MB/s
+GPU_20 Global Read Bandwidth: 9387.17 MB/s
+## GPU 1
+GPU_21 Total time: 8830.35 ms
+GPU_21 Total data processed: 13769.1 MB
+GPU_21 Average Write Time: 0.330039 ms
+GPU_21 Average Kernel Time: 0.0292483 ms
+GPU_21 Average Read Time: 0.429187 ms
+GPU_21 Global Write Bandwidth: 15749.2 MB/s
+GPU_21 Global Read Bandwidth: 12110.9 MB/s
 ## TOTAL
-GPU 0 Load: 2922851840
-GPU 1 Load: 3552568320
-Total processing time: 11551.1 ms
+GPU 0 Load: 3.15963e+09
+GPU 1 Load: 3.60949e+09
+GPU_0 processes 2346 images.
+GPU_1 processes 2649 images.
+Workload imbalance: 12.4632%
+Total processing time: 10929.2 ms

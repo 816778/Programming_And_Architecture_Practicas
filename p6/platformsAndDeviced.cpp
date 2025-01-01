@@ -12,6 +12,7 @@
 #include <string>
 #include <thread>
 #include <mutex>
+#include <random>
 #include <chrono>
 #include <numeric>
 #include <thread_pool_alpha.hpp>
@@ -52,9 +53,10 @@ enum WriteOption {
 };
 
 enum ParallelOption {
-    ONE_DEVICE,
-    SIMPLE,
-    SIMPLE_BALANCED,
+    ONE_DEVICE_0,
+    ONE_DEVICE_1,
+    TWO_DEVICES,
+    TWO_DEVICES_BALANCED,
     USE_CHUNKS
 };
 
@@ -249,7 +251,17 @@ std::vector<CImg<unsigned char>> loadImagesFromFilesConcurrentPool(
     // Esperar a que todos los hilos completen su trabajo
     pool.wait();
 
-    return images;
+    std::vector<size_t> indices(images.size());
+    for (size_t i = 0; i < images.size(); ++i) {
+        indices[i] = i;
+    }
+    std::mt19937 rng(42);
+    std::shuffle(indices.begin(), indices.end(), rng);
+    std::vector<CImg<unsigned char>> shuffled_images;
+    for (size_t i : indices) {
+        shuffled_images.push_back(images[i]);
+    }
+    return shuffled_images;
 }
 
 
@@ -286,45 +298,38 @@ void balance_images(const std::vector<CImg<unsigned char>>& images,
 }
 
 void balance_images_bandwidth(const std::vector<CImg<unsigned char>>& images,
-                    std::vector<CImg<unsigned char>>& images_gpu0,
-                    std::vector<CImg<unsigned char>>& images_gpu1,
-                    double bandwidth_gpu0, double bandwidth_gpu1) {
+                              std::vector<CImg<unsigned char>>& images_gpu0,
+                              std::vector<CImg<unsigned char>>& images_gpu1,
+                              double write_bandwidth_gpu0, double read_bandwidth_gpu0,
+                              double write_bandwidth_gpu1, double read_bandwidth_gpu1) {
     images_gpu0.clear();
     images_gpu1.clear();
 
-    // Calcular el peso de cada GPU basado en su ancho de banda
-    double total_bandwidth = bandwidth_gpu0 + bandwidth_gpu1;
-    double weight_gpu0 = bandwidth_gpu0 / total_bandwidth;
-    double weight_gpu1 = bandwidth_gpu1 / total_bandwidth;
+    // Inicializar carga acumulada de cada GPU
+    double total_time_gpu0 = 0.0;
+    double total_time_gpu1 = 0.0;
 
-    size_t total_load = 0;
+    // Calcular tiempo estimado para cada imagen y asignarla dinámicamente
     for (const auto& img : images) {
-        total_load += img.width() * img.height();
-    }
+        size_t img_size = img.width() * img.height();
 
-    // Calcula la carga objetivo para cada GPU
-    size_t target_load_gpu0 = static_cast<size_t>(total_load * weight_gpu0);
-    size_t target_load_gpu1 = static_cast<size_t>(total_load * weight_gpu1);
+        // Estimar tiempos para cada GPU
+        double time_gpu0 = img_size / write_bandwidth_gpu0 + img_size / read_bandwidth_gpu0;
+        double time_gpu1 = img_size / write_bandwidth_gpu1 + img_size / read_bandwidth_gpu1;
 
-    size_t load_gpu0 = 0, load_gpu1 = 0;
-
-    for (const auto& img : images) {
-        size_t img_load = img.width() * img.height();
-
-        // Asignar la imagen a la GPU con menor desbalance respecto al objetivo
-        if ((load_gpu0 + img_load <= target_load_gpu0) || (load_gpu1 + img_load > target_load_gpu1)) {
+        // Asignar la imagen a la GPU con menor carga acumulada
+        if (total_time_gpu0 + time_gpu0 <= total_time_gpu1 + time_gpu1) {
             images_gpu0.push_back(img);
-            load_gpu0 += img_load;
+            total_time_gpu0 += time_gpu0;
         } else {
             images_gpu1.push_back(img);
-            load_gpu1 += img_load;
+            total_time_gpu1 += time_gpu1;
         }
     }
 
-    std::cout << "GPU_0 target load: " << target_load_gpu0 << ", assigned load: " << load_gpu0 << "\n";
-    std::cout << "GPU_1 target load: " << target_load_gpu1 << ", assigned load: " << load_gpu1 << "\n";
+    std::cout << "Tiempo total estimado GPU_0: " << total_time_gpu0 << " ms\n";
+    std::cout << "Tiempo total estimado GPU_1: " << total_time_gpu1 << " ms\n";
 }
-
 
 
 
@@ -569,7 +574,7 @@ void processImagesOnGPU_optimized_times(cl_context context, cl_device_id device_
         clReleaseMemObject(out_device_object); 
         free(input);
         free(output);
-        //output_img.display("Sobel filter");
+        output_img.display("Sobel filter");
     }
     clReleaseKernel(kernel);
     clReleaseProgram(program);
@@ -634,7 +639,7 @@ int main(int argc, char** argv) {
         return -1;
     }
 
-    size_t total_images = 5000;
+    size_t total_images = 20;
     size_t num_images = files.size();
     size_t copy_each_image = total_images / num_images;
 
@@ -642,7 +647,7 @@ int main(int argc, char** argv) {
     writeOutput(images, files, {}, WRITE_IMAGES, false);
 
 
-    ParallelOption paralel_option = SIMPLE_BALANCED;
+    ParallelOption paralel_option = TWO_DEVICES_BALANCED;
     
     // Scan platforms and devices
     scanPlatformsAndDevices(platforms_ids, devices_ids, &n_platforms, n_devices, verbose);
@@ -655,13 +660,21 @@ int main(int argc, char** argv) {
 
     auto start_chrono = std::chrono::high_resolution_clock::now();
 
-    if (paralel_option == SIMPLE){
+    if(paralel_option == ONE_DEVICE_0){
+        std::thread gpu0_thread(processImagesOnGPU_optimized_times, context_gpu0, devices_ids[0][0], program_gpu0, std::ref(images), 0);
+        gpu0_thread.join();
+    } 
+    else if(paralel_option == ONE_DEVICE_1){
+        std::thread gpu1_thread(processImagesOnGPU_optimized_times, context_gpu1, devices_ids[0][1], program_gpu1, std::ref(images), 1);
+        gpu1_thread.join();
+    } 
+    else if (paralel_option == TWO_DEVICES){
         size_t mid = images.size() / 2;
         std::vector<CImg<unsigned char>> images_gpu0(images.begin(), images.begin() + mid);
         std::vector<CImg<unsigned char>> images_gpu1(images.begin() + mid, images.end());
 
-        std::thread gpu0_thread(processImagesOnGPU_optimized_times, context_gpu0, devices_ids[0][0], program_gpu0, std::ref(images_gpu0), 0);
-        std::thread gpu1_thread(processImagesOnGPU_optimized_times, context_gpu1, devices_ids[0][1], program_gpu1, std::ref(images_gpu1), 1);
+        std::thread gpu0_thread(processImagesOnGPU_optimized_times, context_gpu0, devices_ids[0][0], program_gpu0, std::ref(images_gpu0), 10);
+        std::thread gpu1_thread(processImagesOnGPU_optimized_times, context_gpu1, devices_ids[0][1], program_gpu1, std::ref(images_gpu1), 11);
 
         gpu0_thread.join();
         gpu1_thread.join();
@@ -679,31 +692,36 @@ int main(int argc, char** argv) {
         std::cout << "Workload imbalance: " << imbalance << "%\n";
 
     } 
+    else if(paralel_option == TWO_DEVICES_BALANCED){
+        std::vector<CImg<unsigned char>> images_gpu0, images_gpu1;
+        //balance_images(images, images_gpu0, images_gpu1);
+        balance_images_bandwidth(images, images_gpu0, images_gpu1, 10500, 10100, 14700, 13500);
+
+        std::thread gpu0_thread(processImagesOnGPU_optimized_times, context_gpu0, devices_ids[0][0], program_gpu0, std::ref(images_gpu0), 20);
+        std::thread gpu1_thread(processImagesOnGPU_optimized_times, context_gpu1, devices_ids[0][1], program_gpu1, std::ref(images_gpu1), 21);
+
+        gpu0_thread.join();
+        gpu1_thread.join();
+
+        double load_gpu0 = calculate_load(images_gpu0); // Implementa una función basada en total processing time
+        double load_gpu1 = calculate_load(images_gpu1);
+
+        std::cout << "GPU 0 Load: " << load_gpu0 << std::endl;
+        std::cout << "GPU 1 Load: " << load_gpu1 << std::endl;
+
+        std::cout << "GPU_0 processes " << images_gpu0.size() << " images.\n";
+        std::cout << "GPU_1 processes " << images_gpu1.size() << " images.\n";
+
+        double imbalance = std::abs(load_gpu0 - load_gpu1) / std::max(load_gpu0, load_gpu1) * 100.0;
+        std::cout << "Workload imbalance: " << imbalance << "%\n";
+
+    }
     else if (paralel_option == USE_CHUNKS){
         const int max_chunk_height = 128;
         std::vector<Chunk> chunks = createChunksForAllImages(images, max_chunk_height);
         writeOutput(images, files, chunks, WRITE_CHUNKS, false);
     } 
-    else if(paralel_option == ONE_DEVICE){
-        //std::thread gpu0_thread(processImagesOnGPU_optimized_times, context_gpu0, devices_ids[0][0], program_gpu0, std::ref(images), 10);
-        //gpu0_thread.join();
-        std::thread gpu1_thread(processImagesOnGPU_optimized_times, context_gpu1, devices_ids[0][1], program_gpu1, std::ref(images), 11);
-        gpu1_thread.join();
-    }
-    else if(paralel_option == SIMPLE_BALANCED){
-        std::vector<CImg<unsigned char>> images_gpu0, images_gpu1;
-        //balance_images(images, images_gpu0, images_gpu1);
-        balance_images_bandwidth(images, images_gpu0, images_gpu1, 11500, 14000);
 
-        std::thread gpu0_thread(processImagesOnGPU_optimized_times, context_gpu0, devices_ids[0][0], program_gpu0, std::ref(images_gpu0), 20);
-        std::thread gpu1_thread(processImagesOnGPU_optimized_times, context_gpu1, devices_ids[0][1], program_gpu1, std::ref(images_gpu1), 21);
-
-        std::cout << "GPU 0 Load: " << calculate_load(images_gpu0) << std::endl;
-        std::cout << "GPU 1 Load: " << calculate_load(images_gpu1) << std::endl;
-
-        gpu0_thread.join();
-        gpu1_thread.join();
-    }
     auto end_chrono = std::chrono::high_resolution_clock::now(); // Finaliza el temporizador
     std::chrono::duration<double, std::milli> elapsed = end_chrono - start_chrono;
     std::cout << "Total processing time: " << elapsed.count() << " ms" << std::endl;
