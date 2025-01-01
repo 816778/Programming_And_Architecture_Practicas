@@ -13,7 +13,6 @@ __kernel void pow_of_two (
 
 
 
-
 __kernel void sobel_filter(
     __global const float* input,  // Imagen de entrada
     __global float* output,       // Imagen de salida
@@ -21,16 +20,18 @@ __kernel void sobel_filter(
     const unsigned int height     // Altura de la imagen
 ) {
     // Definir las matrices Sobel
-    const float sobel_x[3][3] = {
-        {-1.0f, 0.0f, 1.0f},
-        {-2.0f, 0.0f, 2.0f},
-        {-1.0f, 0.0f, 1.0f}
+    const float sobel_x[9] = {
+        -1.0f, 0.0f, 1.0f,
+        -2.0f, 0.0f, 2.0f,
+        -1.0f, 0.0f, 1.0f
     };
-    const float sobel_y[3][3] = {
-        { 1.0f,  2.0f,  1.0f},
-        { 0.0f,  0.0f,  0.0f},
-        {-1.0f, -2.0f, -1.0f}
+
+    const float sobel_y[9] = {
+        1.0f,  2.0f,  1.0f,
+        0.0f,  0.0f,  0.0f,
+        -1.0f, -2.0f, -1.0f
     };
+
 
     // Tamaño del bloque local (16x16 + bordes)
     __local float local_mem[18][18]; // Memoria local con márgenes para bordes
@@ -53,37 +54,25 @@ __kernel void sobel_filter(
     int local_x = lx + 1;
     int local_y = ly + 1;
 
-    // Cargar el píxel actual desde memoria global
+    // Carga del píxel central en memoria local
     if (gx < width && gy < height) {
         local_mem[local_y][local_x] = input[gy * width + gx];
     } else {
-        local_mem[local_y][local_x] = 0.0f; // Fuera de los límites
+        local_mem[local_y][local_x] = 0.0f;
     }
 
-    // Cargar los bordes superiores/inferiores
+    // Carga de bordes horizontales
     if (ly == 0 && gy > 0) {
         local_mem[0][local_x] = input[(gy - 1) * width + gx];
-    } else if (gy == 0) {
-        local_mem[0][local_x] = 0.0f;
-    }
-
-    if (ly == local_size_y - 1 && gy < height - 1) {
+    } else if (ly == local_size_y - 1 && gy < height - 1) {
         local_mem[local_y + 1][local_x] = input[(gy + 1) * width + gx];
-    } else if (gy == height - 1) {
-        local_mem[local_y + 1][local_x] = 0.0f;
     }
 
-    // Cargar los bordes izquierdo/derecho
+    // Carga de bordes verticales
     if (lx == 0 && gx > 0) {
-        local_mem[local_y][0] = input[gy * width + gx - 1];
-    } else if (gx == 0) {
-        local_mem[local_y][0] = 0.0f;
-    }
-
-    if (lx == local_size_x - 1 && gx < width - 1) {
-        local_mem[local_y][local_x + 1] = input[gy * width + gx + 1];
-    } else if (gx == width - 1) {
-        local_mem[local_y][local_x + 1] = 0.0f;
+        local_mem[local_y][0] = input[gy * width + (gx - 1)];
+    } else if (lx == local_size_x - 1 && gx < width - 1) {
+        local_mem[local_y][local_x + 1] = input[gy * width + (gx + 1)];
     }
 
     // Cargar las esquinas
@@ -110,8 +99,9 @@ __kernel void sobel_filter(
 
         for (int i = -1; i <= 1; i++) {
             for (int j = -1; j <= 1; j++) {
-                Gx += sobel_x[i + 1][j + 1] * local_mem[local_y + i][local_x + j];
-                Gy += sobel_y[i + 1][j + 1] * local_mem[local_y + i][local_x + j];
+                float pixel = local_mem[local_y + i][local_x + j];
+                Gx += sobel_x[(i + 1) * 3 + (j + 1)] * pixel;
+                Gy += sobel_y[(i + 1) * 3 + (j + 1)] * pixel;
             }
         }
 
@@ -125,8 +115,7 @@ __kernel void sobel_filter(
 
 
 
-
-__kernel void sobel_filter_2(
+__kernel void sobel_filter_global(
     __global const float* input,    // Input image
     __global float* output,         // Output image
     const unsigned int width,       // Image width

@@ -8,7 +8,7 @@ SRC = platformsAndDeviced.cpp
 CC = g++
 
 # Flags del compilador
-CFLAGS = -std=c++11 -O2
+CFLAGS = -std=c++11 -O2 -Iinclude
 
 # Rutas de bibliotecas
 LIB_PATHS = -L/opt/intel/oneapi/compiler/2023.2.0/linux/lib \
