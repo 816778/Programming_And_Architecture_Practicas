@@ -9,6 +9,7 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <list>
 #include <string>
 #include <thread>
 #include <mutex>
@@ -40,16 +41,31 @@ using namespace cimg_library;
 
 
 struct Chunk {
-    int start_x;
-    int start_y;
-    int width;
-    int height;
-    CImg<unsigned char>* image;
+    int start, end;
+    int length() const { return end - start; }
 };
 
-enum WriteOption {
-    WRITE_IMAGES,
-    WRITE_CHUNKS
+struct ChunkList {
+    std::vector<Chunk> chunks;
+    std::mutex mutex;
+    unsigned int iter, elements, num_chunks;
+
+    ChunkList(int num_chunks, int num_elements) {
+        iter = 0;
+        elements = num_elements;
+        num_chunks = num_chunks;
+        for (int i = 0; i < num_chunks; ++i) {
+            int start = i * num_elements / num_chunks;
+            int end = (i + 1) * num_elements / num_chunks;
+            chunks.push_back({start, end});
+        }
+    }
+
+    Chunk getChunk() {
+        std::lock_guard<std::mutex> lock(mutex);
+        if (iter >= num_chunks) return {0, 0};
+        return chunks[iter++];
+    }
 };
 
 enum ParallelOption {
@@ -65,58 +81,28 @@ enum ParallelOption {
  * Auxiliar functions
  */
 
-void writeOutput(const std::vector<CImg<unsigned char>>& images, const std::vector<std::string>& files, const std::vector<Chunk>& chunks, WriteOption option, bool verbose = true) {
-    if (!verbose){
-        return;
-    }
+void writeOutputImages(const std::vector<CImg<unsigned char>>& images, const std::vector<std::string>& files, bool verbose = true) {
+    if (!verbose) return;
 
-    if (option == WRITE_IMAGES) {
-        for (size_t i = 0; i < images.size(); i++) {
-            size_t file_index = i % files.size();  // Índice del archivo original
-            std::cout << "Imagen " << i + 1 << ": " << files[file_index] << " (" 
-                      << images[i].width() << "x" << images[i].height() << ")\n";
-        }
-    } else if (option == WRITE_CHUNKS) {
-        for (size_t i = 0; i < chunks.size(); ++i) {
-            const Chunk& chunk = chunks[i];
-            cout << "Chunk " << i + 1 << ": Imagen " << chunk.image
-                 << ", Posición (" << chunk.start_x << ", " << chunk.start_y << ")"
-                 << ", Tamaño (" << chunk.width << "x" << chunk.height << ")\n";
-        }
+    for (size_t i = 0; i < images.size(); i++) {
+        size_t file_index = i % files.size();  // Índice del archivo original
+        std::cout << "Imagen " << i + 1 << ": " << files[file_index] << " (" 
+                    << images[i].width() << "x" << images[i].height() << ")\n";
     }
 }
 
-/**
- * Chunck functions
- */
-std::vector<Chunk> createChunksForImage(CImg<unsigned char>& image, int max_chunk_height) {
-    std::vector<Chunk> chunks;
-    int img_width = image.width();
-    int img_height = image.height();
+void writeOutputChunks(const ChunkList& chunks, bool verbose = true) {
+    if (!verbose) return;
 
-    for (int start_y = 0; start_y < img_height; start_y += max_chunk_height) {
-        int chunk_height = std::min(max_chunk_height, img_height - start_y);
-        chunks.push_back({0, start_y, img_width, chunk_height, &image});
+    for (size_t i = 0; i < chunks.chunks.size(); i++) {
+        const Chunk& chunk = chunks.chunks[i];
+        std::cout << "Chunk " << i + 1 << ": from " << chunk.start << " to " << chunk.end << " (" << chunk.length() << " images)\n";
     }
-
-    return chunks;
-}
-
-
-std::vector<Chunk> createChunksForAllImages(std::vector<CImg<unsigned char>>& images, int max_chunk_height) {
-    std::vector<Chunk> all_chunks;
-
-    for (auto& image : images) {
-        std::vector<Chunk> chunks = createChunksForImage(image, max_chunk_height);
-        all_chunks.insert(all_chunks.end(), chunks.begin(), chunks.end());
-    }
-
-    return all_chunks;
 }
 
 
 /**
- * Image funtions
+ * Image functions
  */
 std::mutex image_mutex;
 
@@ -270,6 +256,14 @@ size_t calculate_load(const std::vector<CImg<unsigned char>>& images) {
     size_t total_load = 0;
     for (const auto& img : images) {
         total_load += img.width() * img.height(); // Carga basada en el área de la imagen
+    }
+    return total_load;
+}
+
+size_t calculate_load(const std::vector<CImg<unsigned char>>& images, unsigned int start, unsigned int end) {
+    size_t total_load = 0;
+    for (unsigned int i = start; i < end; ++i) {
+        total_load += images[i].width() * images[i].height(); // Carga basada en el área de la imagen
     }
     return total_load;
 }
@@ -620,7 +614,225 @@ void processImagesOnGPU_optimized(cl_context context, cl_device_id device_id, cl
     std::cout << "GPU_" << gpu_id << " Global Write Bandwidth: " << total_write_bandwidth_global << " MB/s\n";
     std::cout << "GPU_" << gpu_id << " Global Read Bandwidth: " << total_read_bandwidth_global << " MB/s\n";
 
- }   
+}
+
+
+
+
+void manageChunks (ChunkList& chunks, cl_context context, cl_device_id device_id, cl_program program, const std::vector<CImg<unsigned char>>& images, int gpu_id, bool watch, double& load, unsigned int& size) {
+    // duration vars set to zero
+    std::cout << "thread start" << std::endl;
+    auto start_chrono = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> elapsed = start_chrono - start_chrono, elapsed_threads = start_chrono - start_chrono;
+    double total_write_time = 0.0;
+    double total_kernel_time = 0.0;
+    double total_read_time = 0.0;
+
+    start_chrono = std::chrono::high_resolution_clock::now();
+
+    int err;
+
+    cl_kernel kernel = clCreateKernel(program, "sobel_filter", &err);
+    cl_error(err, "Failed to create kernel from the program\n");
+
+    cl_command_queue write_queue = createCommandQueue(context, device_id);
+    cl_command_queue kernel_queue = createCommandQueue(context, device_id);
+    cl_command_queue read_queue = createCommandQueue(context, device_id);
+
+    elapsed += std::chrono::high_resolution_clock::now() - start_chrono;
+    start_chrono = std::chrono::high_resolution_clock::now();
+
+    Chunk currentChunk = chunks.getChunk();
+    std::list<Chunk> managed_chunks;
+
+    elapsed_threads += std::chrono::high_resolution_clock::now() - start_chrono;
+    start_chrono = std::chrono::high_resolution_clock::now();
+
+    double total_data = 0.0;
+    double total_write_bandwidth = 0.0;
+    double total_read_bandwidth = 0.0;
+    unsigned int managed_images = 0;
+    
+    std::vector<double> write_times;
+    std::vector<double> kernel_times;
+    std::vector<double> read_times;
+
+    std::vector<double> data_size_bytes;
+    std::vector<double> write_bandwidth;
+    std::vector<double> read_bandwidth;
+
+    std::cout << "thread start finished" << std::endl;
+
+    while (currentChunk.length() > 0) {
+
+        managed_chunks.push_back(currentChunk);
+        managed_images += currentChunk.length();
+
+        std::cout << "new chunk: " << currentChunk.start << " - " << currentChunk.end << std::endl;
+
+        for (size_t img_index = currentChunk.start; img_index < currentChunk.end; ++img_index) {
+            const auto& img = images[img_index];
+            size_t width = img.width();
+            size_t height = img.height();
+            size_t img_s = img.spectrum();
+
+            data_size_bytes.push_back(width * height * img_s * sizeof(float));
+            total_data += data_size_bytes.back();
+
+            size_t VECTOR_SIZE = width * height * img_s;
+            float *input = (float*) malloc(sizeof(float) * VECTOR_SIZE);
+            float *output = (float*) malloc(sizeof(float) * VECTOR_SIZE);
+
+            unsigned iter = 0;
+            for (int channel = 0; channel < img_s; channel++) {
+                for (int j = 0; j < height; j++){
+                    for (int i = 0; i < width; i++){
+                        input[iter++] = (float)img(i, j, 0, channel);
+                    }
+                }
+            }
+            cl_mem in_device_object = clCreateBuffer(context, CL_MEM_READ_ONLY, VECTOR_SIZE * sizeof(float), NULL, &err);
+            cl_error(err, "Failed to create memory buffer at device\n");
+            cl_mem out_device_object = clCreateBuffer(context, CL_MEM_WRITE_ONLY, VECTOR_SIZE * sizeof(float), NULL, &err);
+            cl_error(err, "Failed to create memory buffer at device\n");
+
+            cl_event write_event, kernel_event, read_event;
+
+            // Write buffer (non-blocking)
+            err = clEnqueueWriteBuffer(write_queue, in_device_object, CL_FALSE, 0, sizeof(float) * VECTOR_SIZE, input, 0, NULL, &write_event);
+            cl_error(err, "Failed to enqueue a write command to the device memory\n");
+
+            // Set the arguments to our compute kernel
+            err = clSetKernelArg(kernel, 0, sizeof(cl_mem), &in_device_object);
+            cl_error(err, "Failed to set argument 0\n");
+            err = clSetKernelArg(kernel, 1, sizeof(cl_mem), &out_device_object);
+            cl_error(err, "Failed to set argument 3\n");
+            err = clSetKernelArg(kernel, 2, sizeof(unsigned int), &width);
+            cl_error(err, "Failed to set argument 2\n");
+            err = clSetKernelArg(kernel, 3, sizeof(unsigned int), &height);
+            cl_error(err, "Failed to set argument 3\n");
+            
+            // Launch Kernel
+            size_t local_size[2] = {16, 16};
+            size_t global_size[2] = {width, height};
+            global_size[0] = ((width + local_size[0] - 1) / local_size[0]) * local_size[0];
+            global_size[1] = ((height + local_size[1] - 1) / local_size[1]) * local_size[1];
+            err = clEnqueueNDRangeKernel(kernel_queue, kernel, 2, NULL, global_size, local_size, 1, &write_event, &kernel_event);
+            cl_error(err, "Failed to launch kernel to the device\n");
+
+            // Read data form device memory back to host memory
+            err = clEnqueueReadBuffer(read_queue, out_device_object, CL_FALSE, 0, sizeof(float) * VECTOR_SIZE, output, 1, &kernel_event, &read_event);
+            cl_error(err, "Failed to enqueue a read command\n");
+
+            clWaitForEvents(1, &read_event);
+
+            // Measure times 
+            cl_ulong write_start, write_end, kernel_start, kernel_end, read_start, read_end;
+            clGetEventProfilingInfo(write_event, CL_PROFILING_COMMAND_START, sizeof(write_start), &write_start, NULL);
+            clGetEventProfilingInfo(write_event, CL_PROFILING_COMMAND_END, sizeof(write_end), &write_end, NULL);
+            write_times.push_back((write_end - write_start) * 1e-6); // Convert to ms
+
+            clGetEventProfilingInfo(kernel_event, CL_PROFILING_COMMAND_START, sizeof(kernel_start), &kernel_start, NULL);
+            clGetEventProfilingInfo(kernel_event, CL_PROFILING_COMMAND_END, sizeof(kernel_end), &kernel_end, NULL);
+            kernel_times.push_back((kernel_end - kernel_start) * 1e-6); // Convert to ms
+
+            clGetEventProfilingInfo(read_event, CL_PROFILING_COMMAND_START, sizeof(read_start), &read_start, NULL);
+            clGetEventProfilingInfo(read_event, CL_PROFILING_COMMAND_END, sizeof(read_end), &read_end, NULL);
+            read_times.push_back((read_end - read_start) * 1e-6); // Convert to ms
+
+            total_write_time += write_times.back();
+            total_kernel_time += kernel_times.back();
+            total_read_time += read_times.back();
+
+            write_bandwidth.push_back(data_size_bytes.back() / (write_times.back() * 1e-3));
+            read_bandwidth.push_back(data_size_bytes.back() / (read_times.back() * 1e-3));
+            total_write_bandwidth += write_bandwidth.back();
+            total_read_bandwidth += read_bandwidth.back();
+
+            // Create a new image with the output data
+            CImg<unsigned char> output_img(width, height);
+            iter = 0;
+            for (int channel = 0; channel < img_s; channel++) {
+                for (int j = 0; j < height; j++){
+                    for (int i = 0; i < width; i++){
+                        output_img(i, j) = (unsigned char)output[iter++];
+                    }
+                }
+            }
+
+            /*if (img_index == 0 || img_index == images.size() - 1) {
+                std::string filename = "results/images/output_gpu" + std::to_string(gpu_id) + "_img" + std::to_string(img_index) + ".png";
+                output_img.save_png(filename.c_str());
+                std::cout << "Image saved: " << filename << std::endl;
+            }*/
+
+            clReleaseMemObject(in_device_object);
+            clReleaseMemObject(out_device_object); 
+            free(input);
+            free(output);
+            if (watch){
+                output_img.display("Sobel filter");
+            }
+        }
+
+        load += calculate_load(images, currentChunk.start, currentChunk.end);
+
+        elapsed += std::chrono::high_resolution_clock::now() - start_chrono;
+        start_chrono = std::chrono::high_resolution_clock::now();
+
+        currentChunk = chunks.getChunk();
+
+        elapsed_threads += std::chrono::high_resolution_clock::now() - start_chrono;
+        start_chrono = std::chrono::high_resolution_clock::now();
+
+    }
+    clReleaseKernel(kernel);
+    clReleaseProgram(program);
+    clReleaseCommandQueue(write_queue);
+    clReleaseCommandQueue(kernel_queue);
+    clReleaseCommandQueue(read_queue);
+    clReleaseContext(context);
+
+    elapsed += std::chrono::high_resolution_clock::now() - start_chrono;
+
+    std::cout << "GPU_" << gpu_id << " Processing time: " << elapsed.count() << " ms\n";
+    std::cout << "GPU_" << gpu_id << " Threads time: " << elapsed_threads.count() << " ms\n";
+
+    std::ofstream output_file("results/times_gpu_" + std::to_string(gpu_id) + ".txt");
+    std::ofstream bandwidth_file("results/bandwidth_gpu_" + std::to_string(gpu_id) + ".txt");
+
+    if (output_file.is_open() && bandwidth_file.is_open()) {
+        for (Chunk c : managed_chunks) {
+            for (size_t i = c.start; i < c.end; ++i) {
+                output_file << i << ";" << write_times[i] << ";" << kernel_times[i] << ";" << read_times[i] << "\n";
+                bandwidth_file << i << ":" << data_size_bytes[i] << ";" << write_bandwidth[i] << ";" << read_bandwidth[i] << "\n";
+            }
+        }
+        output_file.close();
+    } else {
+        std::cerr << "Error: Unable to open file for writing.\n";
+    }
+
+    double total_write_bandwidth_global = total_data / (total_write_time * 1e-3); // Bytes / Segundos
+    double total_read_bandwidth_global = total_data / (total_read_time * 1e-3);  // Bytes / Segundos
+    total_write_bandwidth_global /= (1024 * 1024); // MB/s
+    total_read_bandwidth_global /= (1024 * 1024); // MB/s
+
+    double avg_write = std::accumulate(write_times.begin(), write_times.end(), 0.0);
+    double avg_kernel = std::accumulate(kernel_times.begin(), kernel_times.end(), 0.0);
+    double avg_read = std::accumulate(read_times.begin(), read_times.end(), 0.0);
+
+    size = managed_images;
+
+    // Total sized procesed
+    std::cout << "GPU_" << gpu_id << " Total data processed: " << total_data / (1024 * 1024) << " MB\n";
+    std::cout << "GPU_" << gpu_id << " Average Write Time: " << avg_write << " ms\n";
+    std::cout << "GPU_" << gpu_id << " Average Kernel Time: " << avg_kernel << " ms\n";
+    std::cout << "GPU_" << gpu_id << " Average Read Time: " << avg_read << " ms\n";
+
+    std::cout << "GPU_" << gpu_id << " Global Write Bandwidth: " << total_write_bandwidth_global << " MB/s\n";
+    std::cout << "GPU_" << gpu_id << " Global Read Bandwidth: " << total_read_bandwidth_global << " MB/s\n";
+}
 
 
 
@@ -632,8 +844,31 @@ int main(int argc, char** argv) {
     cl_uint n_platforms, n_devices[10];
 
     std::string folder_path = "./images";
+    bool verbose = false, watch = false, loadThreads = false;
+    ParallelOption paralel_option = TWO_DEVICES;
+    int num_chunks = 32;
 
-    bool verbose = true, watch = false, loadThreads = true;
+    for (int arg = 1; arg < argc; arg++) {
+        if ((std::string(argv[arg]) == "-f" || std::string(argv[arg]) == "--folder") && arg + 1 < argc) {
+            folder_path = argv[++arg];
+        } else if (std::string(argv[arg]) == "-v" || std::string(argv[arg]) == "--verbose") {
+            verbose = true;
+        } else if (std::string(argv[arg]) == "-w" || std::string(argv[arg]) == "--watch") {
+            watch = true;
+        } else if (std::string(argv[arg]) == "-t" || std::string(argv[arg]) == "--threads") {
+            loadThreads = true;
+        } else if ((std::string(argv[arg]) == "-d" || std::string(argv[arg]) == "--device") && arg + 1 < argc) {
+            std::string option = argv[++arg];
+            if (option == "gpu0") paralel_option = ONE_DEVICE_0;
+            else if (option == "gpu1") paralel_option = ONE_DEVICE_1;
+            else if (option == "two") paralel_option = TWO_DEVICES;
+            else if (option == "two_balanced") paralel_option = TWO_DEVICES_BALANCED;
+            else if (option == "two_chunks") {
+                paralel_option = USE_CHUNKS;
+                if (arg + 1 < argc) num_chunks = std::stoi(argv[++arg]);
+            }
+        }
+    }
 
     std::vector<std::string> files = listFilesInDirectory(folder_path);
     if (files.empty()) {
@@ -646,10 +881,7 @@ int main(int argc, char** argv) {
     size_t copy_each_image = total_images / num_images;
 
     std::vector<CImg<unsigned char>> images = loadThreads ? loadImagesFromFilesConcurrentPool(files, copy_each_image) : loadImagesFromFiles(files, copy_each_image);
-    writeOutput(images, files, {}, WRITE_IMAGES, false);
-
-
-    ParallelOption paralel_option = TWO_DEVICES_BALANCED;
+    writeOutputImages(images, files, verbose);
     
     // Scan platforms and devices
     scanPlatformsAndDevices(platforms_ids, devices_ids, &n_platforms, n_devices, verbose);
@@ -684,8 +916,8 @@ int main(int argc, char** argv) {
         double load_gpu0 = calculate_load(images_gpu0); // Implementa una función basada en total processing time
         double load_gpu1 = calculate_load(images_gpu1);
 
-        std::cout << "GPU 0 Load: " << load_gpu0 << std::endl;
-        std::cout << "GPU 1 Load: " << load_gpu1 << std::endl;
+        std::cout << "GPU 0 Load: " << load_gpu0 << "\n";
+        std::cout << "GPU 1 Load: " << load_gpu1 << "\n";
 
         std::cout << "GPU_0 processes " << images_gpu0.size() << " images.\n";
         std::cout << "GPU_1 processes " << images_gpu1.size() << " images.\n";
@@ -708,8 +940,8 @@ int main(int argc, char** argv) {
         double load_gpu0 = calculate_load(images_gpu0); // Implementa una función basada en total processing time
         double load_gpu1 = calculate_load(images_gpu1);
 
-        std::cout << "GPU 0 Load: " << load_gpu0 << std::endl;
-        std::cout << "GPU 1 Load: " << load_gpu1 << std::endl;
+        std::cout << "GPU 0 Load: " << load_gpu0 << "\n";
+        std::cout << "GPU 1 Load: " << load_gpu1 << "\n";
 
         std::cout << "GPU_0 processes " << images_gpu0.size() << " images.\n";
         std::cout << "GPU_1 processes " << images_gpu1.size() << " images.\n";
@@ -719,9 +951,30 @@ int main(int argc, char** argv) {
 
     }
     else if (paralel_option == USE_CHUNKS){
-        const int max_chunk_height = 128;
-        std::vector<Chunk> chunks = createChunksForAllImages(images, max_chunk_height);
-        writeOutput(images, files, chunks, WRITE_CHUNKS, false);
+        // mutex for the chunks
+        std::cout << "hola1\n";
+        ChunkList chunks(num_chunks, images.size());
+        std::cout << "hola2\n";
+        writeOutputChunks(chunks, verbose);
+        std::cout << "hola3\n";
+        double load_gpu0 = 0.0, load_gpu1 = 0.0;
+        unsigned int processes_gpu0 = 0, processes_gpu1 = 0;
+
+        std::thread gpu0_thread(manageChunks, std::ref(chunks), context_gpu0, devices_ids[0][0], program_gpu0, std::ref(images), 30, watch, std::ref(load_gpu0), std::ref(processes_gpu0));
+        std::thread gpu1_thread(manageChunks, std::ref(chunks), context_gpu1, devices_ids[0][1], program_gpu1, std::ref(images), 31, watch, std::ref(load_gpu1), std::ref(processes_gpu1));
+        std::cout << "hola4\n";
+        gpu0_thread.join();
+        gpu1_thread.join();
+
+        std::cout << "GPU 0 Load: " << load_gpu0 << "\n";
+        std::cout << "GPU 1 Load: " << load_gpu1 << "\n";
+
+        std::cout << "GPU_0 processes " << processes_gpu0 << " images.\n";
+        std::cout << "GPU_1 processes " << processes_gpu1 << " images.\n";
+
+        double imbalance = std::abs(load_gpu0 - load_gpu1) / std::max(load_gpu0, load_gpu1) * 100.0;
+        std::cout << "Workload imbalance: " << imbalance << "%\n";
+
     } 
 
     auto end_chrono = std::chrono::high_resolution_clock::now(); // Finaliza el temporizador
