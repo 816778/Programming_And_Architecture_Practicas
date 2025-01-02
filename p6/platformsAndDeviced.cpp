@@ -447,7 +447,7 @@ cl_program loadAndBuildProgram(cl_context context, cl_device_id device_id, const
 
 
 
-void processImagesOnGPU_optimized_times(cl_context context, cl_device_id device_id, cl_program program, const std::vector<CImg<unsigned char>>& images, int gpu_id) {
+void processImagesOnGPU_optimized(cl_context context, cl_device_id device_id, cl_program program, const std::vector<CImg<unsigned char>>& images, int gpu_id, bool watch) {
     auto start_chrono = std::chrono::high_resolution_clock::now();
 
     int err;
@@ -574,7 +574,9 @@ void processImagesOnGPU_optimized_times(cl_context context, cl_device_id device_
         clReleaseMemObject(out_device_object); 
         free(input);
         free(output);
-        output_img.display("Sobel filter");
+        if (watch){
+            output_img.display("Sobel filter");
+        }
     }
     clReleaseKernel(kernel);
     clReleaseProgram(program);
@@ -661,11 +663,11 @@ int main(int argc, char** argv) {
     auto start_chrono = std::chrono::high_resolution_clock::now();
 
     if(paralel_option == ONE_DEVICE_0){
-        std::thread gpu0_thread(processImagesOnGPU_optimized_times, context_gpu0, devices_ids[0][0], program_gpu0, std::ref(images), 0);
+        std::thread gpu0_thread(processImagesOnGPU_optimized, context_gpu0, devices_ids[0][0], program_gpu0, std::ref(images), 0, watch);
         gpu0_thread.join();
     } 
     else if(paralel_option == ONE_DEVICE_1){
-        std::thread gpu1_thread(processImagesOnGPU_optimized_times, context_gpu1, devices_ids[0][1], program_gpu1, std::ref(images), 1);
+        std::thread gpu1_thread(processImagesOnGPU_optimized, context_gpu1, devices_ids[0][1], program_gpu1, std::ref(images), 1, watch);
         gpu1_thread.join();
     } 
     else if (paralel_option == TWO_DEVICES){
@@ -673,8 +675,8 @@ int main(int argc, char** argv) {
         std::vector<CImg<unsigned char>> images_gpu0(images.begin(), images.begin() + mid);
         std::vector<CImg<unsigned char>> images_gpu1(images.begin() + mid, images.end());
 
-        std::thread gpu0_thread(processImagesOnGPU_optimized_times, context_gpu0, devices_ids[0][0], program_gpu0, std::ref(images_gpu0), 10);
-        std::thread gpu1_thread(processImagesOnGPU_optimized_times, context_gpu1, devices_ids[0][1], program_gpu1, std::ref(images_gpu1), 11);
+        std::thread gpu0_thread(processImagesOnGPU_optimized, context_gpu0, devices_ids[0][0], program_gpu0, std::ref(images_gpu0), 10, watch);
+        std::thread gpu1_thread(processImagesOnGPU_optimized, context_gpu1, devices_ids[0][1], program_gpu1, std::ref(images_gpu1), 11, watch);
 
         gpu0_thread.join();
         gpu1_thread.join();
@@ -697,8 +699,8 @@ int main(int argc, char** argv) {
         //balance_images(images, images_gpu0, images_gpu1);
         balance_images_bandwidth(images, images_gpu0, images_gpu1, 10500, 10100, 14700, 13500);
 
-        std::thread gpu0_thread(processImagesOnGPU_optimized_times, context_gpu0, devices_ids[0][0], program_gpu0, std::ref(images_gpu0), 20);
-        std::thread gpu1_thread(processImagesOnGPU_optimized_times, context_gpu1, devices_ids[0][1], program_gpu1, std::ref(images_gpu1), 21);
+        std::thread gpu0_thread(processImagesOnGPU_optimized, context_gpu0, devices_ids[0][0], program_gpu0, std::ref(images_gpu0), 20, watch);
+        std::thread gpu1_thread(processImagesOnGPU_optimized, context_gpu1, devices_ids[0][1], program_gpu1, std::ref(images_gpu1), 21, watch);
 
         gpu0_thread.join();
         gpu1_thread.join();
