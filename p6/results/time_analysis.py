@@ -161,15 +161,19 @@ def compare_opencl_metrics(df1, df2, label1='GPU 0', label2='GPU 1'):
 if __name__ == "__main__":
     # list_image("images")
     DATA_PATH = "results/data/"
-    files_path = [DATA_PATH + "times_gpu_0.txt", DATA_PATH + "times_gpu_1.txt", 
-                  DATA_PATH + "times_gpu_10.txt", DATA_PATH + "times_gpu_11.txt",
-                  DATA_PATH + "times_gpu_20.txt", DATA_PATH + "times_gpu_21.txt",]
+    files_path = [DATA_PATH + "times_gpu_30_4.txt", DATA_PATH + "times_gpu_31_4.txt",
+                  DATA_PATH + "times_gpu_30_16.txt", DATA_PATH + "times_gpu_31_16.txt",
+                  DATA_PATH + "times_gpu_30_32.txt", DATA_PATH + "times_gpu_31_32.txt",
+                  DATA_PATH + "times_gpu_30_64.txt", DATA_PATH + "times_gpu_31_64.txt",
+                  ]
+                  
     df = {}
 
     for i, file_path in enumerate(files_path):
         df[i], summary = process_opencl_output(file_path)
         print("\n")
 
-    compare_opencl_metrics(df[0], df[1], label1='GPU 0', label2='GPU 1')
-    compare_opencl_metrics(df[2], df[3], label1='GPU 10', label2='GPU 11')
-    compare_opencl_metrics(df[4], df[5], label1='GPU 20', label2='GPU 21')
+    compare_opencl_metrics(df[0], df[1], label1='GPU 30_4 CHUNKS', label2='GPU 31_4 CHUNKS')
+    compare_opencl_metrics(df[2], df[3], label1='GPU 30_16 CHUNKS', label2='GPU 31_16 CHUNKS')
+    compare_opencl_metrics(df[4], df[5], label1='GPU 30_32 CHUNKS', label2='GPU 31_32 CHUNKS')
+    compare_opencl_metrics(df[6], df[7], label1='GPU 30_64 CHUNKS', label2='GPU 31_64 CHUNKS')

@@ -174,14 +174,18 @@ def plot_aggregated_bandwidth(df1, df2, label1='File 1', label2='File 2', num_se
 
 if __name__ == "__main__":
     DATA_PATH = "results/data/"
-    files_path = [DATA_PATH + "bandwidth_gpu_0.txt", DATA_PATH + "bandwidth_gpu_1.txt",
-                  DATA_PATH + "bandwidth_gpu_10.txt", DATA_PATH + "bandwidth_gpu_11.txt",
-                  DATA_PATH + "bandwidth_gpu_20.txt", DATA_PATH + "bandwidth_gpu_21.txt"]
+    files_path = [DATA_PATH + "bandwidth_gpu_30_4.txt", DATA_PATH + "bandwidth_gpu_31_4.txt",
+                  DATA_PATH + "bandwidth_gpu_30_16.txt", DATA_PATH + "bandwidth_gpu_31_16.txt",
+                  DATA_PATH + "bandwidth_gpu_30_32.txt", DATA_PATH + "bandwidth_gpu_31_32.txt",
+                  DATA_PATH + "bandwidth_gpu_30_64.txt", DATA_PATH + "bandwidth_gpu_31_64.txt",
+                  ]
+    
     df = {}
     for i, file_path in enumerate(files_path):
         df[i] = analyze_bandwidth_file(file_path, i)
     
     # Comparar archivos de ancho de banda
-    plot_smoothed_bandwidth(df[0], df[1], label1='GPU 0', label2='GPU 1', window=50)
-    plot_smoothed_bandwidth(df[2], df[3], label1='GPU 10', label2='GPU 11', window=50)
-    plot_smoothed_bandwidth(df[4], df[5], label1='GPU 20', label2='GPU 21', window=50)
+    plot_smoothed_bandwidth(df[0], df[1], label1='GPU 30 4_chuncks', label2='GPU 31 4_chunks', window=50)
+    plot_smoothed_bandwidth(df[2], df[3], label1='GPU 30 16_chuncks', label2='GPU 31 16_chunks', window=50)
+    plot_smoothed_bandwidth(df[4], df[5], label1='GPU 30 32_chuncks', label2='GPU 31 32_chunks', window=50)
+    plot_smoothed_bandwidth(df[6], df[7], label1='GPU 30 64_chuncks', label2='GPU 31 64_chunks', window=50)
