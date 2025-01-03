@@ -1,8 +1,9 @@
-# Nombre del ejecutable
-EXECUTABLE = platformsAndDeviced
+# Archivos ejecutables
+EXECUTABLES = platformsAndDeviced first_experiment
 
 # Archivos fuente
-SRC = platformsAndDeviced.cpp
+SRC_platformsAndDeviced = platformsAndDeviced.cpp
+SRC_first_experiment = first_experiment.cpp
 
 # Compilador
 CC = g++
@@ -21,13 +22,17 @@ RPATH_FLAGS = -Wl,-rpath=/opt/intel/oneapi/compiler/2023.2.0/linux/lib \
 # Flags de enlace
 LDFLAGS = $(LIB_PATHS) $(RPATH_FLAGS) -lOpenCL -lm -lpthread -lX11 -ljpeg
 
-
 # Regla principal
-all: $(EXECUTABLE)
+all: $(EXECUTABLES)
 
-$(EXECUTABLE): $(SRC)
-	$(CC) $(CFLAGS) $(SRC) -o $(EXECUTABLE) $(LDFLAGS)
+# Compilación de platformsAndDeviced
+platformsAndDeviced: $(SRC_platformsAndDeviced)
+	$(CC) $(CFLAGS) $(SRC_platformsAndDeviced) -o platformsAndDeviced $(LDFLAGS)
+
+# Compilación de first_experiment
+first_experiment: $(SRC_first_experiment)
+	$(CC) $(CFLAGS) $(SRC_first_experiment) -o first_experiment $(LDFLAGS)
 
 # Limpieza
 clean:
-	rm -f $(EXECUTABLE)
+	rm -f $(EXECUTABLES)
