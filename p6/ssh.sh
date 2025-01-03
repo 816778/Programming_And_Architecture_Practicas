@@ -7,8 +7,9 @@
 # scp -r  a816778@central.unizar.es:/home/a816778/master/Programming_And_Architecture_Practicas/p6/results /home/erika/Descargas/Master/Programming_and_Architecture_of_Computing_Systems/PACS_MASTER/p6/results
 # scp /home/erika/Descargas/Master/Programming_and_Architecture_of_Computing_Systems/PACS_MASTER/p6/kernel.cl a816778@central.unizar.es:/home/a816778/master/Programming_And_Architecture_Practicas/p6/
 
+scp /home/erika/Descargas/Master/Programming_and_Architecture_of_Computing_Systems/PACS_MASTER/p6/first_experiment.cpp a816778@central.unizar.es:/home/a816778/master/Programming_And_Architecture_Practicas/p6/
 scp /home/erika/Descargas/Master/Programming_and_Architecture_of_Computing_Systems/PACS_MASTER/p6/platformsAndDeviced.cpp a816778@central.unizar.es:/home/a816778/master/Programming_And_Architecture_Practicas/p6/
-# scp /home/erika/Descargas/Master/Programming_and_Architecture_of_Computing_Systems/PACS_MASTER/p6/Makefile a816778@central.unizar.es:/home/a816778/master/Programming_And_Architecture_Practicas/p6/
+scp /home/erika/Descargas/Master/Programming_and_Architecture_of_Computing_Systems/PACS_MASTER/p6/Makefile a816778@central.unizar.es:/home/a816778/master/Programming_And_Architecture_Practicas/p6/
 
 
 # CORRECCIONES DE P5

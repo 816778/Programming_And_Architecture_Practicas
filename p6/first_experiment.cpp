@@ -641,7 +641,7 @@ int main(int argc, char** argv) {
         return -1;
     }
 
-    size_t total_images = 20;
+    size_t total_images = 5000;
     size_t num_images = files.size();
     size_t copy_each_image = total_images / num_images;
 
@@ -649,7 +649,7 @@ int main(int argc, char** argv) {
     writeOutput(images, files, {}, WRITE_IMAGES, false);
 
 
-    ParallelOption paralel_option = TWO_DEVICES_BALANCED;
+    ParallelOption paralel_option = ONE_DEVICE_0;
     
     // Scan platforms and devices
     scanPlatformsAndDevices(platforms_ids, devices_ids, &n_platforms, n_devices, verbose);
