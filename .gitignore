@@ -62,5 +62,6 @@ execuable/*
 *.pdf
 /entrega
 entrega
-entrega
 second_experiment.cpp
+PACS
+/PACS

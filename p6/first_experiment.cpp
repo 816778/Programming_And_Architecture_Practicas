@@ -705,7 +705,7 @@ int main(int argc, char** argv) {
         gpu0_thread.join();
         gpu1_thread.join();
 
-        double load_gpu0 = calculate_load(images_gpu0); // Implementa una función basada en total processing time
+        double load_gpu0 = calculate_load(images_gpu0);
         double load_gpu1 = calculate_load(images_gpu1);
 
         std::cout << "GPU 0 Load: " << load_gpu0 << std::endl;
